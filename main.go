@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -46,13 +47,14 @@ import (
 
 func printUsage() {
     const usageStr = "lvc - lesser version control\n" +
-        "\n" +
-        "commands:\n" +
-        " - init\n" +
-        " - add\n" +
-        " - rm\n" +
-        " - commit\n" +
-        "\n"
+                     "\n" +
+                     "commands:\n" +
+                     " - init\n" +
+                     " - add\n" +
+                     " - rm\n" +
+                     " - commit\n" +
+                     " - log\n" +
+                     "\n"
     fmt.Print(usageStr)
 }
 
@@ -121,6 +123,8 @@ func commandInit() {
     createDirectory(".lvc")
     createDirectory(".lvc/commits")
     createDirectory(".lvc/blobs")
+    createDirectory(".lvc/branches")
+    createDirectory(".lvc/tags")
 
 
     // create the baseline commit
@@ -128,8 +132,11 @@ func commandInit() {
     commitID := ID(sha256.Sum256([]byte(baseCommit)))
     ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(commitID[:]), baseCommit, 0644)
 
-    // point head to bare commit
-    ioutil.WriteFile(".lvc/head", []byte(hex.EncodeToString(commitID[:]) + "\n"), 0644)
+    // point master to bare commit
+    ioutil.WriteFile(".lvc/branches/master", []byte(hex.EncodeToString(commitID[:]) + "\n"), 0644)
+
+    // point head to master
+    ioutil.WriteFile(".lvc/head", []byte("master"), 0644)
 
     stage, err := os.Create(".lvc/stage")
     if err != nil {
@@ -140,7 +147,8 @@ func commandInit() {
     }
     stage.Close()
 
-    fmt.Println("lvc now tracks this directory!")
+    abs, _ := filepath.Abs(".lvc")
+    fmt.Println("Initilized lvc in " + abs)
 }
 
 func readStageFile() []string {
@@ -269,15 +277,28 @@ func getFilesFromHead() []CommitFile {
 
 
 func getHeadID() ID {
-    head, err := os.Open(".lvc/head")
+    headBytes, err := ioutil.ReadFile(".lvc/head")
     if err != nil {
         panic(err)
     }
-    defer head.Close()
-    headScanner := bufio.NewScanner(head)
-    headScanner.Scan()
-    strID := headScanner.Text()
-    sliceID, err := hex.DecodeString(strID)
+    head := string(headBytes)
+
+    if _, err := os.Stat(".lvc/branches/" + head); os.IsNotExist(err) {
+        fmt.Fprintln(os.Stderr, "error: unknown branch '" + head + "'")
+        os.Exit(1)
+    }
+
+    branchBytes, err := ioutil.ReadFile(".lvc/branches/" + head)
+    if err != nil {
+        panic(err)
+    }
+    // Chop of newline at the end
+    branch := string(branchBytes[:len(branchBytes)-1])
+
+    sliceID, err := hex.DecodeString(branch)
+    if err != nil {
+        panic(err)
+    }
 
     id := ID{}
     copy(id[:], sliceID[:])
@@ -308,8 +329,6 @@ func commandCommit() {
 
     headFiles := getFilesFromHead()
     stageFiles := readStageFile()
-
-    fmt.Println(headFiles)
 
     headFilesLoop:
     for _, hf := range headFiles {
