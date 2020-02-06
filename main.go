@@ -69,6 +69,12 @@ type Branch struct {
     id   ID
 }
 
+// Tag represens a tag and its commit id
+type Tag struct {
+    name string
+    id   ID
+}
+
 
 // ID representing any object
 type ID [32]byte
@@ -397,7 +403,7 @@ func clearStage() {
 }
 
 
-func createNewBranchFromHEAD(name string) {
+func createNewBranchFromHead(name string) {
     branches := getAllBranches()
     for _, b := range branches {
         if b.name == name {
@@ -430,6 +436,61 @@ func getAllBranches() []Branch {
     }
 
     return result
+}
+
+
+func createTagAtHead(name string) {
+    if _, err := os.Open(name); os.IsExist(err) {
+        fmt.Fprintln(os.Stderr, "error: tag '" + name + "' already exists")
+        os.Exit(1)
+    }
+    headID := getHeadID()
+
+    ioutil.WriteFile(".lvc/tags/" + name, []byte(hex.EncodeToString(headID[:]) + "\n"), 0644)
+}
+
+
+func getTagID(name string) ID {
+    if _, err := os.Open(".lvc/tags/" + name); os.IsNotExist(err) {
+        fmt.Fprintln(os.Stderr, "error: unknown tag '" + name + "'")
+        os.Exit(1)
+    }
+
+    tagBytes, err := ioutil.ReadFile(".lvc/tags/" + name)
+    if err != nil {
+        panic(err)
+    }
+    // Chop of newline
+    tagIDString := string(tagBytes[:len(tagBytes)-1])
+
+    tagIDBytes, err := hex.DecodeString(tagIDString)
+    if err != nil {
+        panic(err)
+    }
+
+    id := ID{}
+    copy(id[:], tagIDBytes)
+
+    return id
+}
+
+
+func getAllTags() []Tag {
+    tags := make([]Tag, 0)
+
+    fileinfos, err := ioutil.ReadDir(".lvc/tags")
+    for _, fi := range fileinfos {
+        name := fi.Name()
+        tags = append(tags, Tag{
+            name: name,
+            id: getTagID(name),
+        })
+    }
+    if err != nil {
+        panic(err)
+    }
+    
+    return tags
 }
 
 
@@ -567,6 +628,10 @@ func main() {
         commandLog()
     case "branch":
         commandBranch()
+    case "tag":
+        commandTag()
+    case "tags":
+        commandTags()
     default:
         printUsage()
         return

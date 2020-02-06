@@ -183,6 +183,33 @@ func commandBranch() {
         }
     } else {
         //TODO: assume only one extra arg for now, handle this later
-        createNewBranchFromHEAD(flag.Arg(1))
+        createNewBranchFromHead(flag.Arg(1))
+    }
+}
+
+
+func commandTag() {
+    if flag.NArg() != 2 {
+        printUsage()
+        fmt.Fprintln(os.Stderr, "error: usage: tag <tag-name>")
+        return
+    }
+
+    tagName := flag.Arg(1)
+
+    createTagAtHead(tagName)
+}
+
+
+func commandTags() {
+    if flag.NArg() != 1 || flag.NFlag() != 0 {
+        printUsage()
+        fmt.Fprintln(os.Stderr, "error: command 'tags' takes no arguments")
+        return
+    }
+
+    tags := getAllTags()
+    for _, t := range tags {
+        fmt.Println(t.name, hex.EncodeToString(t.id[:]))
     }
 }
