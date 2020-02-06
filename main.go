@@ -45,15 +45,15 @@ import (
 // lvc rm stop tracking file, not actually remove it because that would be silly
 
 func printUsage() {
-	const usageStr = "lvc - lesser version control\n" +
-		"\n" +
-		"commands:\n" +
-		" - init\n" +
-		" - add\n" +
-		" - rm\n" +
-		" - commit\n" +
-		"\n"
-	fmt.Print(usageStr)
+    const usageStr = "lvc - lesser version control\n" +
+        "\n" +
+        "commands:\n" +
+        " - init\n" +
+        " - add\n" +
+        " - rm\n" +
+        " - commit\n" +
+        "\n"
+    fmt.Print(usageStr)
 }
 
 
@@ -79,7 +79,7 @@ func createEmptyFile(path string) {
     head, err := os.Create(".lvc/head")
     if err != nil {
         fmt.Fprintln(os.Stderr, "error: failed to create .lvc/head")
-		fmt.Fprintln(os.Stderr, err)
+        fmt.Fprintln(os.Stderr, err)
     }
     head.Close()
 }
@@ -87,7 +87,7 @@ func createEmptyFile(path string) {
 
 func createDirectory(path string) bool {
     if err := os.Mkdir(path, 0777); err != nil {
-		fmt.Fprintln(os.Stderr, "error: failed to create " + path)
+        fmt.Fprintln(os.Stderr, "error: failed to create " + path)
         fmt.Fprintln(os.Stderr, err)
         return false
     }
@@ -96,27 +96,27 @@ func createDirectory(path string) bool {
 
 
 func commandInit() {
-	if flag.NArg() != 1 {
-		printUsage()
-		fmt.Println("error: init takes no arguments")
-		return
-	}
+    if flag.NArg() != 1 {
+        printUsage()
+        fmt.Println("error: init takes no arguments")
+        return
+    }
 
-	if flag.NFlag() > 0 {
-		printUsage()
-		fmt.Println("error: init takes no flags")
-		return
-	}
+    if flag.NFlag() > 0 {
+        printUsage()
+        fmt.Println("error: init takes no flags")
+        return
+    }
 
-	if f, err := os.Stat(".lvc"); err == nil {
-		if !f.IsDir() {
-			fmt.Fprintln(os.Stderr, "error: '.lvc' appears to be a file, this installation may be corrupt")
-			return
-		}
+    if f, err := os.Stat(".lvc"); err == nil {
+        if !f.IsDir() {
+            fmt.Fprintln(os.Stderr, "error: '.lvc' appears to be a file, this installation may be corrupt")
+            return
+        }
 
-		fmt.Fprintln(os.Stderr, "error: this directory is already tracked by lvc")
-		return
-	}
+        fmt.Fprintln(os.Stderr, "error: this directory is already tracked by lvc")
+        return
+    }
 
     createDirectory(".lvc")
     createDirectory(".lvc/commits")
@@ -140,7 +140,7 @@ func commandInit() {
     }
     stage.Close()
 
-	fmt.Println("lvc now tracks this directory!")
+    fmt.Println("lvc now tracks this directory!")
 }
 
 func readStageFile() []string {
@@ -538,17 +538,17 @@ func commandLog() {
 
 
 func main() {
-	if len(os.Args) <= 1 {
-		printUsage()
-		return
+    if len(os.Args) <= 1 {
+        printUsage()
+        return
     }
     //os.RemoveAll(".lvc")
 
-	flag.Parse()
+    flag.Parse()
 
-	switch os.Args[1] {
-	case "init":
-		commandInit()
+    switch os.Args[1] {
+    case "init":
+        commandInit()
     case "add":
         commandAdd()
     case "status":
@@ -559,8 +559,8 @@ func main() {
         panic("//TODO")
     case "log":
         commandLog()
-	default:
-		printUsage()
-		return
-	}
+    default:
+        printUsage()
+        return
+    }
 }
