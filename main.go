@@ -45,17 +45,28 @@ import (
 // lvc commit "Message"
 // lvc rm stop tracking file, not actually remove it because that would be silly
 
-func printUsage() {
-    const usageStr = "lvc - lesser version control\n" +
-                     "\n" +
-                     "commands:\n" +
-                     " - init\n" +
-                     " - add\n" +
-                     " - rm\n" +
-                     " - commit\n" +
-                     " - log\n" +
-                     "\n"
-    fmt.Print(usageStr)
+
+// Commit represents a single commit
+type Commit struct {
+    id        ID
+    parent    ID
+    message   string
+    author    string
+    timestamp time.Time
+    files     []CommitFile
+}
+
+
+// CommitFile represents a file with its name and its ID
+type CommitFile struct {
+    name string
+    id ID
+}
+
+// Branch represents a branch and its current commit id
+type Branch struct {
+    name string
+    id   ID
 }
 
 
@@ -80,7 +91,7 @@ func createBlob(data []byte) ID {
 func createEmptyFile(path string) {
     head, err := os.Create(".lvc/head")
     if err != nil {
-        fmt.Fprintln(os.Stderr, "error: failed to create .lvc/head")
+        fmt.Fprintln(os.Stderr, "error: failed to create file '" + path + "'")
         fmt.Fprintln(os.Stderr, err)
     }
     head.Close()
@@ -97,59 +108,6 @@ func createDirectory(path string) bool {
 }
 
 
-func commandInit() {
-    if flag.NArg() != 1 {
-        printUsage()
-        fmt.Println("error: init takes no arguments")
-        return
-    }
-
-    if flag.NFlag() > 0 {
-        printUsage()
-        fmt.Println("error: init takes no flags")
-        return
-    }
-
-    if f, err := os.Stat(".lvc"); err == nil {
-        if !f.IsDir() {
-            fmt.Fprintln(os.Stderr, "error: '.lvc' appears to be a file, this installation may be corrupt")
-            return
-        }
-
-        fmt.Fprintln(os.Stderr, "error: this directory is already tracked by lvc")
-        return
-    }
-
-    createDirectory(".lvc")
-    createDirectory(".lvc/commits")
-    createDirectory(".lvc/blobs")
-    createDirectory(".lvc/branches")
-    createDirectory(".lvc/tags")
-
-
-    // create the baseline commit
-    baseCommit := []byte("\n\n\n"+time.Now().Format(time.RFC3339)+"\n")
-    commitID := ID(sha256.Sum256([]byte(baseCommit)))
-    ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(commitID[:]), baseCommit, 0644)
-
-    // point master to bare commit
-    ioutil.WriteFile(".lvc/branches/master", []byte(hex.EncodeToString(commitID[:]) + "\n"), 0644)
-
-    // point head to master
-    ioutil.WriteFile(".lvc/head", []byte("master\n"), 0644)
-
-    stage, err := os.Create(".lvc/stage")
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "error: failed to create .lvc/head")
-        fmt.Fprintln(os.Stderr, err)
-        // clear
-        return
-    }
-    stage.Close()
-
-    abs, _ := filepath.Abs(".lvc")
-    fmt.Println("Initilized lvc in " + abs)
-}
 
 func readStageFile() []string {
     stageReader, err := os.Open(".lvc/stage")
@@ -168,49 +126,7 @@ func readStageFile() []string {
     return files
 }
 
-func commandAdd() {
-    //TODO: call functions that ensure this is a valid lvc dir
 
-    if flag.NArg() < 1 {
-        fmt.Fprintln(os.Stderr, "error: add takes at minimum one argument")
-        return
-    }
-
-    stagedFiles := readStageFile()
-
-    sw, err := os.OpenFile(".lvc/stage", os.O_APPEND|os.O_WRONLY, 0644)
-    if err != nil {
-        //TODO
-        panic(err)
-    }
-
-    file_loop:
-    for _, file := range flag.Args()[1:] {
-        if _, err := os.Stat(file); os.IsNotExist(err) {
-            fmt.Fprintln(os.Stderr, "error: " + file + " does not exist")
-            continue
-        }
-
-        for _, sf := range stagedFiles {
-            if sf == file {
-                continue file_loop
-            }
-        }
-        sw.WriteString(file + "\n")
-    }
-}
-
-
-func commandStatus() {
-    //TODO: ensure .lvc
-
-
-    fmt.Println("Staged files:")
-    files := readStageFile()
-    for _, f := range files {
-        fmt.Println("   " + f)
-    }
-}
 
 
 func getFileHash(path string) []byte {
@@ -226,12 +142,6 @@ func getFileHash(path string) []byte {
     }
 
     return h.Sum(nil)
-}
-
-// CommitFile represents a file with its name and its ID
-type CommitFile struct {
-    name string
-    id ID
 }
 
 
@@ -271,43 +181,6 @@ func getFilesFromCommit(id ID) []CommitFile {
 }
 
 
-func getFilesFromHead() []CommitFile {
-    return getFilesFromCommit(getHeadID())
-}
-
-
-func getHeadID() ID {
-    headBytes, err := ioutil.ReadFile(".lvc/head")
-    if err != nil {
-        panic(err)
-    }
-    // Chop of newline
-    head := string(headBytes[:len(headBytes)-1])
-
-    if _, err := os.Stat(".lvc/branches/" + head); os.IsNotExist(err) {
-        fmt.Fprintln(os.Stderr, "error: unknown branch '" + head + "'")
-        os.Exit(1)
-    }
-
-    branchBytes, err := ioutil.ReadFile(".lvc/branches/" + head)
-    if err != nil {
-        panic(err)
-    }
-    // Chop of newline at the end
-    branch := string(branchBytes[:len(branchBytes)-1])
-
-    sliceID, err := hex.DecodeString(branch)
-    if err != nil {
-        panic(err)
-    }
-
-    id := ID{}
-    copy(id[:], sliceID[:])
-
-    return id
-}
-
-
 func createBlobForFileWithID(path string, id ID) {
     //TODO: ensure it does not already exist
     data, err := ioutil.ReadFile(path)
@@ -317,105 +190,6 @@ func createBlobForFileWithID(path string, id ID) {
     ioutil.WriteFile(".lvc/blobs/" + hex.EncodeToString(id[:]), data, 0644)
 }
 
-
-func commandCommit() {
-    //TODO: ensure .lvc etc.
-    if flag.NArg() != 2 {
-        printUsage()
-        fmt.Fprintln(os.Stderr, "error: commit only takes the form 'commit \"msg\"")
-        return
-    }
-
-    commit := make([]CommitFile, 0)
-
-    headFiles := getFilesFromHead()
-    stageFiles := readStageFile()
-
-    headFilesLoop:
-    for _, hf := range headFiles {
-        for _, sf := range stageFiles {
-            if sf == hf.name {
-                continue headFilesLoop
-            }
-        }
-        commit = append(commit, hf)
-    }
-
-    stageFileLoop:
-    for _, f := range stageFiles {
-        // If file is new, commit anyways
-        // If the files is not new, checked if the hash differ, if so commit it
-        for _, hf := range headFiles {
-            if hf.name == f {
-                // File is not new
-                hash := getFileHash(f)
-                
-                if bytes.Equal(hash, hf.id[:]) {
-                    commit = append(commit, hf)
-                } else {
-                    id := ID{}
-                    copy(id[:], hash)
-                    commit = append(commit, CommitFile{
-                        name: f,
-                        id: id,
-                    })
-                    createBlobForFileWithID(f, id)
-                }
-
-                continue stageFileLoop
-            }
-        }
-
-        hash := getFileHash(f)
-        id := ID{}
-        copy(id[:], hash)
-        commit = append(commit, CommitFile{
-            name: f,
-            id: id,
-        })
-        createBlobForFileWithID(f, id)
-    }
-
-    headid := getHeadID()
-
-    builder := strings.Builder{}
-    builder.WriteString(hex.EncodeToString(headid[:]) + "\n")
-    builder.WriteString(flag.Args()[1] + "\n")
-    builder.WriteString("thebirk <pingnor@gmail.com>\n")
-    builder.WriteString(time.Now().Format(time.RFC3339) + "\n")
-    for _, c := range commit {
-        builder.WriteString(c.name + " " + hex.EncodeToString(c.id[:]) + "\n")
-    }
-
-    final := builder.String()
-    id := ID(sha256.Sum256([]byte(final)))
-
-    // write commit to file
-    ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(id[:]), []byte(final), 0644)
-
-    // clear stage file
-    if err := os.Truncate(".lvc/stage", 0); err != nil {
-        panic(err)
-    }
-
-    // update HEAD
-    head, err := os.OpenFile(".lvc/head", os.O_TRUNC|os.O_WRONLY, 0644)
-    if err != nil {
-        panic(err)
-    }
-    head.WriteString(hex.EncodeToString(id[:]))
-    head.Close()
-}
-
-// Commit represents a single commit
-type Commit struct {
-    id        ID
-    parent    ID
-    message   string
-    author    string
-    timestamp time.Time
-    files     []CommitFile
-}
 
 func getCommitWithoutFiles(id ID) Commit {
     reader, err := os.Open(".lvc/commits/" + hex.EncodeToString(id[:]))
@@ -506,54 +280,266 @@ func getCommit(id ID) Commit {
 }
 
 
+func getFilesFromHead() []CommitFile {
+    return getFilesFromCommit(getHeadID())
+}
+
+
+func getHeadID() ID {
+    headBytes, err := ioutil.ReadFile(".lvc/head")
+    if err != nil {
+        panic(err)
+    }
+    // Chop of newline
+    head := string(headBytes[:len(headBytes)-1])
+
+    if _, err := os.Stat(".lvc/branches/" + head); os.IsNotExist(err) {
+        fmt.Fprintln(os.Stderr, "error: unknown branch '" + head + "'")
+        os.Exit(1)
+    }
+
+    branchBytes, err := ioutil.ReadFile(".lvc/branches/" + head)
+    if err != nil {
+        panic(err)
+    }
+    // Chop of newline at the end
+    branch := string(branchBytes[:len(branchBytes)-1])
+
+    sliceID, err := hex.DecodeString(branch)
+    if err != nil {
+        panic(err)
+    }
+
+    id := ID{}
+    copy(id[:], sliceID[:])
+
+    return id
+}
+
+
 func getHead() Commit {
     id := getHeadID()
     return getCommit(id)
 }
 
 
-func commandLog() {
-    // make sure .lvc etc.
+func getBranchID(name string) ID {
+    if _, err := os.Open(".lvc/branches/" + name); os.IsNotExist(err) {
+        fmt.Fprintln(os.Stderr, "error: unknown branch '" + name + "'")
+        os.Exit(1)
+    }
 
-    var commit Commit
-    
-    if flag.NArg() >= 2 {
-        // if arg is a valid id, check if that exists
-        // otherwise check if it is a branch
-        arg := flag.Args()[1]
-        if len(arg) == 64 {
-            // This looks like an id
-            stringID, err := hex.DecodeString(arg)
-            if err != nil {
-                fmt.Fprintln(os.Stderr, "error: invalid commit '" + arg + "'")
-                return
+    branchBytes, err := ioutil.ReadFile(".lvc/branches/" + name)
+    if err != nil {
+        panic(err)
+    }
+    // Chop of newline
+    branchIDString := string(branchBytes[:len(branchBytes)-1])
+
+    branchIDBytes, err := hex.DecodeString(branchIDString)
+    if err != nil {
+        panic(err)
+    }
+
+    id := ID{}
+    copy(id[:], branchIDBytes)
+
+    return id
+}
+
+
+func getBranch(name string) Commit {
+    id := getBranchID(name)
+    return getCommit(id)
+}
+
+
+func getBranchFromHead() Branch {
+    headBytes, err := ioutil.ReadFile(".lvc/head")
+    if err != nil {
+        panic(err)
+    }
+    // Chop of newline
+    headString := string(headBytes[:len(headBytes)-1])
+
+    return Branch{
+        name: headString,
+        id: getBranchID(headString),
+    }
+}
+
+
+func updateBranch(name string, id ID) {
+    if _, err := os.Open(".lvc/branches/" + name); os.IsNotExist(err) {
+        fmt.Fprintln(os.Stderr, "error: unknown branch '" + name + "'")
+        os.Exit(1)
+    }
+
+    // WriteFile truncates
+    err := ioutil.WriteFile(".lvc/branches/" + name, []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
+    if err != nil {
+        panic(err)
+    }
+}
+
+
+func updateHead(id ID) {
+    currentBranch := getBranchFromHead()
+    updateBranch(currentBranch.name, id)
+}
+
+
+func clearStage() {
+    // clear stage file
+    if err := os.Truncate(".lvc/stage", 0); err != nil {
+        panic(err)
+    }
+}
+
+
+func createNewBranchFromHEAD(name string) {
+    branches := getAllBranches()
+    for _, b := range branches {
+        if b.name == name {
+            fmt.Fprintln(os.Stderr, "error: branch '" + name + "' already exists")
+            os.Exit(1)
+        }
+    }
+
+    id := getHeadID()
+    err := ioutil.WriteFile(".lvc/branches/" + name, []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
+    if err != nil {
+        panic(err)
+    }
+}
+
+
+func getAllBranches() []Branch {
+    result := make([]Branch, 0)
+
+    fileinfos, err := ioutil.ReadDir(".lvc/branches")
+    for _, fi := range fileinfos {
+        name := fi.Name()
+        result = append(result, Branch{
+            name: name,
+            id: getBranchID(name),
+        })
+    }
+    if err != nil {
+        panic(err)
+    }
+
+    return result
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+func initialize() {
+    createDirectory(".lvc")
+    createDirectory(".lvc/commits")
+    createDirectory(".lvc/blobs")
+    createDirectory(".lvc/branches")
+    createDirectory(".lvc/tags")
+
+
+    // create the baseline commit
+    baseCommit := []byte("\n\n\n"+time.Now().Format(time.RFC3339)+"\n")
+    commitID := ID(sha256.Sum256([]byte(baseCommit)))
+    ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(commitID[:]), baseCommit, 0644)
+
+    // point master to bare commit
+    ioutil.WriteFile(".lvc/branches/master", []byte(hex.EncodeToString(commitID[:]) + "\n"), 0644)
+
+    // point head to master
+    ioutil.WriteFile(".lvc/head", []byte("master\n"), 0644)
+
+    stage, err := os.Create(".lvc/stage")
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "error: failed to create .lvc/head")
+        fmt.Fprintln(os.Stderr, err)
+        // clear
+        return
+    }
+    stage.Close()
+
+    abs, _ := filepath.Abs(".lvc")
+    fmt.Println("Initilized lvc in " + abs)
+}
+
+
+func commitStage(msg string, author string, ) {
+    commit := make([]CommitFile, 0)
+
+    head := getHead()
+    stageFiles := readStageFile()
+
+    headFilesLoop:
+    for _, hf := range head.files {
+        for _, sf := range stageFiles {
+            if sf == hf.name {
+                continue headFilesLoop
             }
-
-            id := ID{}
-            copy(id[:], stringID)
-
-            commit = getCommitWithoutFiles(id)
-        } else {
-            // cant be an idea, assume branch
-            panic("//TODO : branches")
         }
-    } else {
-        commit = getHead()
+        commit = append(commit, hf)
     }
 
-    for {
-        if commit.parent == zeroID {
-            break
+    stageFileLoop:
+    for _, f := range stageFiles {
+        // If file is new, commit anyways
+        // If the files is not new, checked if the hash differ, if so commit it
+        for _, hf := range head.files {
+            if hf.name == f {
+                // File is not new
+                hash := getFileHash(f)
+                
+                if bytes.Equal(hash, hf.id[:]) {
+                    commit = append(commit, hf)
+                } else {
+                    id := ID{}
+                    copy(id[:], hash)
+                    commit = append(commit, CommitFile{
+                        name: f,
+                        id: id,
+                    })
+                    createBlobForFileWithID(f, id)
+                }
+
+                continue stageFileLoop
+            }
         }
 
-        fmt.Println(hex.EncodeToString(commit.id[:]))
-        fmt.Println("date: " + commit.timestamp.Local().String())
-        fmt.Println("author: " + commit.author)
-        fmt.Println("message: " + commit.message)
-        fmt.Println()
-
-        commit = getCommitWithoutFiles(commit.parent)
+        hash := getFileHash(f)
+        id := ID{}
+        copy(id[:], hash)
+        commit = append(commit, CommitFile{
+            name: f,
+            id: id,
+        })
+        createBlobForFileWithID(f, id)
     }
+
+    headid := getHeadID()
+
+    builder := strings.Builder{}
+    builder.WriteString(hex.EncodeToString(headid[:]) + "\n")
+    builder.WriteString(msg + "\n")
+    builder.WriteString(author + "\n")
+    builder.WriteString(time.Now().Format(time.RFC3339) + "\n")
+    for _, c := range commit {
+        builder.WriteString(c.name + " " + hex.EncodeToString(c.id[:]) + "\n")
+    }
+
+    final := builder.String()
+    id := ID(sha256.Sum256([]byte(final)))
+
+    // write commit to file
+    ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(id[:]), []byte(final), 0644)
+
+    clearStage()
+
+    updateHead(id)
 }
 
 
@@ -579,6 +565,8 @@ func main() {
         panic("//TODO")
     case "log":
         commandLog()
+    case "branch":
+        commandBranch()
     default:
         printUsage()
         return
