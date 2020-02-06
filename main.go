@@ -136,7 +136,7 @@ func commandInit() {
     ioutil.WriteFile(".lvc/branches/master", []byte(hex.EncodeToString(commitID[:]) + "\n"), 0644)
 
     // point head to master
-    ioutil.WriteFile(".lvc/head", []byte("master"), 0644)
+    ioutil.WriteFile(".lvc/head", []byte("master\n"), 0644)
 
     stage, err := os.Create(".lvc/stage")
     if err != nil {
@@ -281,7 +281,8 @@ func getHeadID() ID {
     if err != nil {
         panic(err)
     }
-    head := string(headBytes)
+    // Chop of newline
+    head := string(headBytes[:len(headBytes)-1])
 
     if _, err := os.Stat(".lvc/branches/" + head); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + head + "'")
