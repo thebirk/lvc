@@ -164,15 +164,15 @@ func getFilesFromCommit(id ID) []CommitFile {
             continue
         }
 
-        line := strings.Split(scanner.Text(), " ")
-        sid, err := hex.DecodeString(line[1])
+        line := strings.SplitN(scanner.Text(), " ", 2)
+        sid, err := hex.DecodeString(line[0])
         if err != nil {
             panic(err)
         }
         id := ID{}
         copy(id[:], sid)
         files = append(files, CommitFile{
-            name: line[0],
+            name: line[1],
             id: id,
         })
     }
@@ -263,15 +263,15 @@ func getCommit(id ID) Commit {
     commit.files = make([]CommitFile, 0)
     
     for scanner.Scan() {
-        line := strings.Split(scanner.Text(), " ")
-        sid, err := hex.DecodeString(line[1])
+        line := strings.SplitN(scanner.Text(), " ", 2)
+        sid, err := hex.DecodeString(line[0])
         if err != nil {
             panic(err)
         }
         id := ID{}
         copy(id[:], sid)
         commit.files = append(commit.files, CommitFile{
-            name: line[0],
+            name: line[1],
             id: id,
         })
     }
@@ -528,7 +528,7 @@ func commitStage(msg string, author string, ) {
     builder.WriteString(author + "\n")
     builder.WriteString(time.Now().Format(time.RFC3339) + "\n")
     for _, c := range commit {
-        builder.WriteString(c.name + " " + hex.EncodeToString(c.id[:]) + "\n")
+        builder.WriteString(hex.EncodeToString(c.id[:]) + " " + c.name + "\n")
     }
 
     final := builder.String()
