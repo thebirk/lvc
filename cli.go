@@ -133,7 +133,20 @@ func commandLog() {
             commit = getCommitWithoutFiles(id)
         } else {
             // cant be an idea, assume branch
-            panic("//TODO : branches")
+
+            foundBranch := false
+            branches := getAllBranches()
+            for _, b := range branches {
+                if b.name == arg {
+                    commit = getCommitWithoutFiles(b.id)
+                    foundBranch = true
+                }
+            }
+
+            if !foundBranch {
+                fmt.Fprintln(os.Stderr, "error: unknown branch '" + arg + "'")
+                return
+            }
         }
     } else {
         commit = getHead()
