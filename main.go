@@ -440,7 +440,7 @@ func getAllBranches() []Branch {
 
 
 func createTagAtHead(name string) {
-    if _, err := os.Open(name); os.IsExist(err) {
+    if _, err := os.Open(".lvc/tags/" + name); !os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: tag '" + name + "' already exists")
         os.Exit(1)
     }
