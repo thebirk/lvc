@@ -139,7 +139,7 @@ func createBlob(data []byte) ID {
 
 
 func createEmptyFile(path string) {
-    head, err := os.Create(".lvc/head")
+    head, err := os.Create(path)
     if err != nil {
         fmt.Fprintln(os.Stderr, "error: failed to create file '" + path + "'")
         fmt.Fprintln(os.Stderr, err)
@@ -546,6 +546,13 @@ func idsAreEqual(a ID, b ID) bool {
 }
 
 
+func setHead(branch string) {
+    // This will check if the branch exists
+    getBranch(branch)
+    ioutil.WriteFile(".lvc/head", []byte(branch + "\n"), 0644)
+}
+
+
 func checkoutBranch(name string) {
     head := getHead()
     branch := getBranch(name)
@@ -595,7 +602,7 @@ func checkoutBranch(name string) {
     }
 
     // set head to current branch
-    ioutil.WriteFile(".lvc/head", []byte(name + "\n"), 0644)
+    setHead(name)
 }
 
 
