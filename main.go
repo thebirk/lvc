@@ -557,6 +557,7 @@ func checkoutBranch(name string) {
 
         if !idsAreEqual(f.id, currentID) {
             if !yesno(fmt.Sprintf("Contents of file '%s' has changed since last commit, checking out this branch will OVERWRITE it, Are you sure you want to proceed?", f.name), false) {
+                fmt.Println("Stopping checkout due to user input.")
                 os.Exit(0)
             }
         }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -9,24 +10,29 @@ import (
 )
 
 
-func yesno(prompt string, defaultIsYes bool) bool {
-    if defaultIsYes {
-        fmt.Printf("%s: [Y/n]", prompt)
+func yesno(prompt string, defaultResp bool) bool {
+    if defaultResp {
+        fmt.Printf("%s [Y/n]: ", prompt)
     } else {
-        fmt.Printf("%s: [y/N]", prompt)
+        fmt.Printf("%s [y/N]: ", prompt)
     }
+
     resp := ""
-    _, err := fmt.Scanln(&resp)
-    if err != nil {
-        panic(err)
+    scanner := bufio.NewScanner(os.Stdin)
+    scanner.Scan()
+
+    if scanner.Err() == nil {
+        resp = scanner.Text()
+    } else {
+        return defaultResp
     }
 
     resp = strings.ToLower(resp)
 
-    if (defaultIsYes && (resp == "n" || resp == "no")) || (!defaultIsYes && (resp == "y" || resp == "yes")) {
-        return defaultIsYes
+    if (defaultResp && (resp == "n" || resp == "no")) || (!defaultResp && (resp == "y" || resp == "yes")) {
+        return !defaultResp
     } else {
-        return !defaultIsYes
+        return defaultResp
     }
 }
 
