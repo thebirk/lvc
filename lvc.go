@@ -89,6 +89,7 @@ type ID [32]byte
 var zeroID = ID([32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 
 var _lvcRoot = ""
+var errNotARepo = errors.New("not a repository")
 func findLvcRoot() (string, error) {
     if _lvcRoot != "" {
         return _lvcRoot, nil
@@ -117,6 +118,8 @@ func findLvcRoot() (string, error) {
     if err == errFoundPath {
         _lvcRoot = rootPath
         return rootPath, nil
+    } else if err == nil {
+        return "", errNotARepo
     }
     return "", err
 }

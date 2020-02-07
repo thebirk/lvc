@@ -50,6 +50,15 @@ func printUsage() {
 }
 
 
+func assumeLvcRepo() {
+    _, err := findLvcRoot()
+    if err != nil {
+        fmt.Fprintln(os.Stderr, "error: not a lvc repository")
+        os.Exit(1)
+    }
+}
+
+
 func commandInit() {
     if flag.NArg() != 1 {
         printUsage()
@@ -79,6 +88,7 @@ func commandInit() {
 
 
 func commandAdd() {
+    assumeLvcRepo()
     //TODO: call functions that ensure this is a valid lvc dir
 
     if flag.NArg() < 1 {
@@ -113,6 +123,8 @@ func commandAdd() {
 
 
 func commandCommit() {
+    assumeLvcRepo()
+
     //TODO: ensure .lvc etc.
     if flag.NArg() != 2 {
         printUsage()
@@ -126,6 +138,8 @@ func commandCommit() {
 
 
 func commandStatus() {
+    assumeLvcRepo()
+
     //TODO: ensure .lvc
     fmt.Println("Current branch: " + getBranchFromHead().name)
     fmt.Println()
@@ -154,6 +168,7 @@ func commandStatus() {
 
 
 func commandLog() {
+    assumeLvcRepo()
     // make sure .lvc etc.
 
     var commit Commit
@@ -212,6 +227,7 @@ func commandLog() {
 
 
 func commandBranch() {
+    assumeLvcRepo()
     if flag.NArg() == 1 {
         branches := getAllBranches()
         current := getBranchFromHead()
@@ -232,6 +248,8 @@ func commandBranch() {
 
 
 func commandTag() {
+    assumeLvcRepo()
+
     if flag.NArg() != 2 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: usage: tag <tag-name>")
@@ -245,6 +263,8 @@ func commandTag() {
 
 
 func commandTags() {
+    assumeLvcRepo()
+
     if flag.NArg() != 1 || flag.NFlag() != 0 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: command 'tags' takes no arguments")
@@ -259,6 +279,8 @@ func commandTags() {
 
 
 func commandCheckout() {
+    assumeLvcRepo()
+
     if flag.NArg() != 2 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: usage: checkout <branch>")
@@ -276,6 +298,8 @@ func main() {
         return
     }
     //os.RemoveAll(".lvc")
+
+    //IDEA: Have some argument like '--root=path' and plop that shit into _lvcRoot
 
     flag.Parse()
 
