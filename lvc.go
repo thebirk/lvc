@@ -211,42 +211,6 @@ func getFileHash(path string) ID {
 }
 
 
-func getFilesFromCommit(id ID) []CommitFile {
-    reader, err := os.Open(".lvc/commits/" + hex.EncodeToString(id[:]))
-    if err != nil {
-        //TODO: Handle
-        panic(err)
-    }
-    defer reader.Close()
-
-    files := make([]CommitFile, 0)
-
-    skipLines := 4
-    scanner := bufio.NewScanner(reader)
-    for scanner.Scan() {
-        if skipLines > 0 {
-            skipLines--
-            scanner.Text()
-            continue
-        }
-
-        line := strings.SplitN(scanner.Text(), " ", 2)
-        sid, err := hex.DecodeString(line[0])
-        if err != nil {
-            panic(err)
-        }
-        id := ID{}
-        copy(id[:], sid)
-        files = append(files, CommitFile{
-            name: line[1],
-            id: id,
-        })
-    }
-
-    return files
-}
-
-
 func createBlobForFileWithID(path string, id ID) {
     //TODO: ensure it does not already exist
     data, err := ioutil.ReadFile(path)
@@ -344,11 +308,6 @@ func getCommit(id ID) Commit {
     }
 
     return commit
-}
-
-
-func getFilesFromHead() []CommitFile {
-    return getFilesFromCommit(getHeadID())
 }
 
 
