@@ -31,9 +31,8 @@ func yesno(prompt string, defaultResp bool) bool {
 
     if (defaultResp && (resp == "n" || resp == "no")) || (!defaultResp && (resp == "y" || resp == "yes")) {
         return !defaultResp
-    } else {
-        return defaultResp
     }
+    return defaultResp
 }
 
 
@@ -128,12 +127,27 @@ func commandCommit() {
 
 func commandStatus() {
     //TODO: ensure .lvc
+    fmt.Println("Current branch: " + getBranchFromHead().name)
+    fmt.Println()
 
+    stagedFiles := readStageFile()
+    if len(stagedFiles) > 0 {
+        fmt.Println("Staged files:")
+        for _, f := range stagedFiles {
+            fmt.Println("    " + f)
+        }
+    } else {
+        fmt.Println("No staged files")
+    }
 
-    fmt.Println("Staged files:")
-    files := readStageFile()
-    for _, f := range files {
-        fmt.Println("   " + f)
+    fmt.Println()
+
+    modifiedFiles := getModifiedFiles()
+    if len(modifiedFiles) > 0 {
+        fmt.Println("Unstaged Modified files:")
+        for _, f := range modifiedFiles {
+            fmt.Println("    " + f)
+        }
     }
 }
 

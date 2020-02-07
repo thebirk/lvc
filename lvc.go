@@ -88,31 +88,34 @@ type Tag struct {
 type ID [32]byte
 var zeroID = ID([32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 
-
+var _lvcRoot = ""
 func findLvcRoot() (string, error) {
+    if _lvcRoot != "" {
+        return _lvcRoot, nil
+    }
+
     errFoundPath := errors.New("found root path")
     rootPath := ""
 
     wd, _ := os.Getwd()
     err := walkUp(wd, func(pathUp string, info os.FileInfo) error {
-        fmt.Println(pathUp)
         return filepath.Walk(pathUp, func(path string, info os.FileInfo, err error) error {
             if pathUp == path {
                 return nil
             }
             if info.IsDir() {
                 if info.Name() == ".lvc" {
-                    rootPath = path
+                    rootPath = filepath.Dir(path)
                     return errFoundPath
                 }
                 return filepath.SkipDir
             }
-            fmt.Println(path)
             return nil
         })
     })
     
     if err == errFoundPath {
+        _lvcRoot = rootPath
         return rootPath, nil
     }
     return "", err
@@ -122,6 +125,8 @@ func findLvcRoot() (string, error) {
 func createBlob(data []byte) ID {
     id := ID(sha256.Sum256(data))
     name := hex.EncodeToString(id[:])
+
+    //TODO: Check if blob already exists, if so, we can skip writing it again
 
     if err := ioutil.WriteFile(name, data, 0644); err != nil {
         panic(err)
@@ -145,6 +150,43 @@ func readStageFile() []string {
     for scanner.Scan() {
         files = append(files, scanner.Text())
     }
+
+    return files
+}
+
+
+func getModifiedFiles() []string {
+    trackedFiles := getHead()
+
+    files := make([]string, 0)
+
+    root, err := findLvcRoot()
+    if err != nil {
+        panic(err)
+    }
+
+    filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+        path, err = filepath.Rel(root, path)
+        if err != nil {
+            panic(err)
+        }
+        if info.IsDir() && info.Name() == ".lvc" {
+            return filepath.SkipDir
+        }
+
+        for _, tf := range trackedFiles.files {
+            if tf.name == path {
+                currentHash := getFileHash(tf.name)
+
+                if !idsAreEqual(currentHash, tf.id) {
+                    files = append(files, tf.name)
+                    return nil
+                }
+            }
+        }
+        
+        return nil
+    })
 
     return files
 }
