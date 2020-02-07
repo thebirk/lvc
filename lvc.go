@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"flag"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -89,39 +89,33 @@ type ID [32]byte
 var zeroID = ID([32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
 
 
-func copyFile(src, dst string) error {
-    in, err := os.Open(src)
-    if err != nil {
-        return err
-    }
-    defer in.Close()
+func findLvcRoot() (string, error) {
+    errFoundPath := errors.New("found root path")
+    rootPath := ""
 
-    out, err := os.Create(dst)
-    if err != nil {
-        return err
+    wd, _ := os.Getwd()
+    err := walkUp(wd, func(pathUp string, info os.FileInfo) error {
+        fmt.Println(pathUp)
+        return filepath.Walk(pathUp, func(path string, info os.FileInfo, err error) error {
+            if pathUp == path {
+                return nil
+            }
+            if info.IsDir() {
+                if info.Name() == ".lvc" {
+                    rootPath = path
+                    return errFoundPath
+                }
+                return filepath.SkipDir
+            }
+            fmt.Println(path)
+            return nil
+        })
+    })
+    
+    if err == errFoundPath {
+        return rootPath, nil
     }
-
-    _, err = io.Copy(out, in)
-    if err != nil {
-        return err
-    }
-
-    err = out.Sync()
-    if err != nil {
-        return err
-    }
-
-    fi, err := os.Stat(src)
-    if err != nil {
-        return err
-    }
-
-    err = os.Chmod(dst, fi.Mode())
-    if err != nil {
-        return err
-    }
-
-    return out.Close()
+    return "", err
 }
 
 
@@ -134,27 +128,6 @@ func createBlob(data []byte) ID {
     }
 
     return id
-}
-
-
-
-func createEmptyFile(path string) {
-    head, err := os.Create(path)
-    if err != nil {
-        fmt.Fprintln(os.Stderr, "error: failed to create file '" + path + "'")
-        fmt.Fprintln(os.Stderr, err)
-    }
-    head.Close()
-}
-
-
-func createDirectory(path string) bool {
-    if err := os.Mkdir(path, 0777); err != nil {
-        fmt.Fprintln(os.Stderr, "error: failed to create " + path)
-        fmt.Fprintln(os.Stderr, err)
-        return false
-    }
-    return true
 }
 
 
@@ -175,8 +148,6 @@ func readStageFile() []string {
 
     return files
 }
-
-
 
 
 func getFileHash(path string) ID {
@@ -279,6 +250,7 @@ func getCommitWithoutFiles(id ID) Commit {
 
     return commit
 }
+
 
 func getCommit(id ID) Commit {
     reader, err := os.Open(".lvc/commits/" + hex.EncodeToString(id[:]))
@@ -709,41 +681,4 @@ func commitStage(msg string, author string, ) {
     clearStage()
 
     updateHead(id)
-}
-
-
-func main() {
-    if len(os.Args) <= 1 {
-        printUsage()
-        return
-    }
-    //os.RemoveAll(".lvc")
-
-    flag.Parse()
-
-    switch os.Args[1] {
-    case "init":
-        commandInit()
-    case "add":
-        commandAdd()
-    case "status":
-        commandStatus()
-    case "commit":
-        commandCommit()
-    case "rm":
-        panic("//TODO")
-    case "log":
-        commandLog()
-    case "branch":
-        commandBranch()
-    case "tag":
-        commandTag()
-    case "tags":
-        commandTags()
-    case "checkout":
-        commandCheckout()
-    default:
-        printUsage()
-        return
-    }
 }

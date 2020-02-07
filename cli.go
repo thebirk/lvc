@@ -254,3 +254,40 @@ func commandCheckout() {
     branchName := flag.Arg(1)
     checkoutBranch(branchName)
 }
+
+
+func main() {
+    if len(os.Args) <= 1 {
+        printUsage()
+        return
+    }
+    //os.RemoveAll(".lvc")
+
+    flag.Parse()
+
+    switch os.Args[1] {
+    case "init":
+        commandInit()
+    case "add":
+        commandAdd()
+    case "status":
+        commandStatus()
+    case "commit":
+        commandCommit()
+    case "rm":
+        panic("//TODO")
+    case "log":
+        commandLog()
+    case "branch":
+        commandBranch()
+    case "tag":
+        commandTag()
+    case "tags":
+        commandTags()
+    case "checkout":
+        commandCheckout()
+    default:
+        printUsage()
+        return
+    }
+}
