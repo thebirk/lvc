@@ -46,6 +46,14 @@ import (
 // lvc rm stop tracking file, not actually remove it because that would be silly
 
 
+// TODO:
+//   - Make the function that checks if we are in a lvc repo
+//   - Make all .lvc paths relative so we can call from anywhere
+//   - User config in ~/.config/lvc/config
+//     - If env LVC_HOME is set => $LVC_HOME/config
+//     - Option for default author
+
+
 // Commit represents a single commit
 type Commit struct {
     id        ID
@@ -79,6 +87,42 @@ type Tag struct {
 // ID representing any object
 type ID [32]byte
 var zeroID = ID([32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+
+
+func copyFile(src, dst string) error {
+    in, err := os.Open(src)
+    if err != nil {
+        return err
+    }
+    defer in.Close()
+
+    out, err := os.Create(dst)
+    if err != nil {
+        return err
+    }
+
+    _, err = io.Copy(out, in)
+    if err != nil {
+        return err
+    }
+
+    err = out.Sync()
+    if err != nil {
+        return err
+    }
+
+    fi, err := os.Stat(src)
+    if err != nil {
+        return err
+    }
+
+    err = os.Chmod(dst, fi.Mode())
+    if err != nil {
+        return err
+    }
+
+    return out.Close()
+}
 
 
 func createBlob(data []byte) ID {
@@ -135,7 +179,7 @@ func readStageFile() []string {
 
 
 
-func getFileHash(path string) []byte {
+func getFileHash(path string) ID {
     f, err := os.Open(path)
     if err != nil {
         panic(err)
@@ -147,7 +191,10 @@ func getFileHash(path string) []byte {
         panic(err)
     }
 
-    return h.Sum(nil)
+    id := ID{}
+    copy(id[:], h.Sum(nil))
+
+    return id
 }
 
 
@@ -494,6 +541,63 @@ func getAllTags() []Tag {
 }
 
 
+func idsAreEqual(a ID, b ID) bool {
+    return bytes.Equal(a[:], b[:])
+}
+
+
+func checkoutBranch(name string) {
+    head := getHead()
+    branch := getBranch(name)
+    
+
+    // make sure the user is aware that their files will be overwritten
+    for _, f := range head.files {
+        currentID := getFileHash(f.name)
+
+        if !idsAreEqual(f.id, currentID) {
+            if !yesno(fmt.Sprintf("Contents of file '%s' has changed since last commit, checking out this branch will OVERWRITE it, Are you sure you want to proceed?", f.name), false) {
+                os.Exit(0)
+            }
+        }
+    }
+    
+
+    filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+        if path == ".lvc" {
+            return filepath.SkipDir
+        }
+        
+        if info.IsDir() {
+            return nil
+        }
+
+        found := false
+        for _, bf := range branch.files {
+            if bf.name == path {
+                found = true
+                break
+            }
+        }
+
+        if !found {
+            os.Remove(path)
+        }
+
+        return nil
+    })
+    
+
+    for _, bf := range branch.files {
+        blobPath := ".lvc/blobs/" + hex.EncodeToString(bf.id[:])
+        copyFile(blobPath, bf.name)
+    }
+
+    // set head to current branch
+    ioutil.WriteFile(".lvc/head", []byte(name + "\n"), 0644)
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -555,25 +659,21 @@ func commitStage(msg string, author string, ) {
                 // File is not new
                 hash := getFileHash(f)
                 
-                if bytes.Equal(hash, hf.id[:]) {
+                if bytes.Equal(hash[:], hf.id[:]) {
                     commit = append(commit, hf)
                 } else {
-                    id := ID{}
-                    copy(id[:], hash)
                     commit = append(commit, CommitFile{
                         name: f,
-                        id: id,
+                        id: hash,
                     })
-                    createBlobForFileWithID(f, id)
+                    createBlobForFileWithID(f, hash)
                 }
 
                 continue stageFileLoop
             }
         }
 
-        hash := getFileHash(f)
-        id := ID{}
-        copy(id[:], hash)
+        id := getFileHash(f)
         commit = append(commit, CommitFile{
             name: f,
             id: id,
@@ -632,6 +732,8 @@ func main() {
         commandTag()
     case "tags":
         commandTags()
+    case "checkout":
+        commandCheckout()
     default:
         printUsage()
         return

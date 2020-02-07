@@ -5,7 +5,30 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 )
+
+
+func yesno(prompt string, defaultIsYes bool) bool {
+    if defaultIsYes {
+        fmt.Printf("%s: [Y/n]", prompt)
+    } else {
+        fmt.Printf("%s: [y/N]", prompt)
+    }
+    resp := ""
+    _, err := fmt.Scanln(&resp)
+    if err != nil {
+        panic(err)
+    }
+
+    resp = strings.ToLower(resp)
+
+    if (defaultIsYes && (resp == "n" || resp == "no")) || (!defaultIsYes && (resp == "y" || resp == "yes")) {
+        return defaultIsYes
+    } else {
+        return !defaultIsYes
+    }
+}
 
 
 func printUsage() {
@@ -212,4 +235,16 @@ func commandTags() {
     for _, t := range tags {
         fmt.Println(t.name, hex.EncodeToString(t.id[:]))
     }
+}
+
+
+func commandCheckout() {
+    if flag.NArg() != 2 {
+        printUsage()
+        fmt.Fprintln(os.Stderr, "error: usage: checkout <branch>")
+        return
+    }
+
+    branchName := flag.Arg(1)
+    checkoutBranch(branchName)
 }
