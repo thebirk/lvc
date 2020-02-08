@@ -106,9 +106,16 @@ func commandAdd() {
 
     file_loop:
     for _, file := range flag.Args()[1:] {
-        if _, err := os.Stat(file); os.IsNotExist(err) {
+        info, err := os.Stat(file);
+        if os.IsNotExist(err) {
             fmt.Fprintln(os.Stderr, "error: " + file + " does not exist")
             continue
+        } else if err != nil {
+            panic(err)
+        }
+
+        if info.IsDir() {
+            fmt.Fprintln(os.Stderr, "error: cannot stage directory "  + file)
         }
 
         for _, sf := range stagedFiles {

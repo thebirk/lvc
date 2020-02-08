@@ -25,7 +25,7 @@ import (
 // Could allow blobs for commit messages, identify by prefixng the message with "blob:".
 // make sure to disallow "blob:" in short commit message for this to work
 
-// Make stage more stage like, aka make a blob when you stage a file
+// TODO: Make stage more stage like, aka make a blob when you stage a file
 // store the hash of that in the stage file and use that in for example
 // lvc diff so that you can see when a staged file has changes.
 // Also useful so that you dont accidentally change files after staging
@@ -33,6 +33,13 @@ import (
 
 // how are we going to set author? per commit?
 
+
+// TODO: Have the possibliy to checkout tags and commits and land in a state like detached-HEAD in git,
+// but instead of allowing commit, require a branch first.
+// ex.
+//   lvc checkout <commitid>           ;; "detached HEAD", commits are disallowed
+//   lvc branch new-branch-at-commit   ;; create a new branch, currently at <commitid>
+//   lvc checkout new-branch-at-commit ;; checkout the new branch, commits are allowed again
 
 // commit format:
 //  commitid ; id of parent commit
@@ -554,6 +561,7 @@ func checkoutBranch(name string) {
         }
     }
     
+    //TODO: If a directory is empty after checkout, remove it, we dont need it
 
     filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
         if path == ".lvc" {
@@ -620,8 +628,7 @@ func diffWorkingWith(id ID) {
                 // files is tracked
                 id := getFileHash(path)
                 if !idsAreEqual(id, cf.id) {
-                    start := time.Now()
-
+                    // start := time.Now()
                     
                     if(true) {
                         workingFile, _ := ioutil.ReadFile(path)
@@ -634,6 +641,20 @@ func diffWorkingWith(id ID) {
                         
                         // Show only the 4 first and last lines of and equals
                         // if its longer than 8 or so lines maybe
+                        totalInserts := 0
+                        totalDeletions := 0
+
+                        for _, d := range diff {
+                            switch d.Type {
+                            case diffmatchpatch.DiffInsert:
+                                totalInserts += countLines(d.Text)
+                            case diffmatchpatch.DiffDelete:
+                                totalDeletions += countLines(d.Text)
+                            }
+                        }
+
+                        fmt.Fprintf(lessIn, "%s - %d inserts(+), %d deletions(-)\n", path, totalInserts, totalDeletions)
+
                         for _, d := range diff {
                             switch d.Type {
                             case diffmatchpatch.DiffEqual:
@@ -644,13 +665,15 @@ func diffWorkingWith(id ID) {
                                 printTextWithPrefixSuffix(lessIn, d.Text, "\033[31m-", "\033[0m")
                             }
                         }
+
+                        fmt.Fprintln(lessIn)
                     } else {
                         cmd := exec.Command("diff", "-u", root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]), path)
                         cmd.Stdout = os.Stdout
                         cmd.Run()
                     }
 
-                    fmt.Println("diff took " + time.Since(start).String())
+                    //fmt.Fprintln(lessIn, "diff took " + time.Since(start).String())
                 }
             }
         }

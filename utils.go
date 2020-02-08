@@ -58,13 +58,30 @@ func walkUp(root string, walkFn walkFunc) error {
 }
 
 
-func printTextWithPrefixSuffix(writer io.Writer, text string, prefix string, suffix string) {
+func countLines(s string) int {
+    count := 0
+    d := []byte(s)
+    for _, b := range d {
+        if b == 10 {
+            count++
+        }
+    }
+    return count
+}
+
+
+func printTextWithPrefixSuffix(writer io.Writer, text string, prefix string, suffix string) int {
+    totalLines := 0
     scanner := bufio.NewScanner(strings.NewReader(text))
+
     for scanner.Scan() {
         fmt.Fprint(writer, prefix)
         fmt.Fprint(writer, scanner.Text())
         fmt.Fprintln(writer, suffix)
+        totalLines++
     }
+
+    return totalLines
 }
 
 
