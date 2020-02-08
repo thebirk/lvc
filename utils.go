@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"unicode/utf8"
 )
 
@@ -53,6 +55,15 @@ func walkUp(root string, walkFn walkFunc) error {
     }
 
     return nil
+}
+
+
+func printTextWithPrefix(text string, prefix string) {
+    scanner := bufio.NewScanner(strings.NewReader(text))
+    for scanner.Scan() {
+        fmt.Print(prefix)
+        fmt.Println(scanner.Text())
+    }
 }
 
 

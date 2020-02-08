@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // HEAD -> id of current commit
@@ -584,6 +586,61 @@ func checkoutBranch(name string) {
 
     // set head to current branch
     setHead(name)
+}
+
+
+func diffWorkingWith(id ID) {
+    root, err := findLvcRoot()
+    if err != nil {
+        panic(err)
+    }
+
+    commit := getCommit(id)
+
+    //TODO: Handle files that are present in the commit, but missing in working
+    dmp := diffmatchpatch.New()
+
+    filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+        if info.IsDir() && info.Name() == ".lvc" {
+            return filepath.SkipDir
+        }
+        path, _ = filepath.Rel(root, path)
+
+        for _, cf := range commit.files {
+            if path == cf.name {
+                // files is tracked
+                id := getFileHash(path)
+                if !idsAreEqual(id, cf.id) {
+                    start := time.Now()
+
+                    workingFile, _ := ioutil.ReadFile(path)
+                    commitFile, _ := ioutil.ReadFile(root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]))
+
+                    a, b, arr := dmp.DiffLinesToChars(string(commitFile), string(workingFile))
+                    diff := dmp.DiffMain(a, b, false)
+                    diff = dmp.DiffCharsToLines(diff, arr)
+                    diff = dmp.DiffCleanupSemantic(diff)
+
+                    // Show only the 4 first and last lines of and equals
+                    // if its longer than 8 or so lines maybe
+                    for _, d := range diff {
+                        switch d.Type {
+                        case diffmatchpatch.DiffEqual:
+                            fmt.Println(d.Text)
+                        case diffmatchpatch.DiffInsert:
+                            printTextWithPrefix(d.Text, "+")
+                        case diffmatchpatch.DiffDelete:
+                            printTextWithPrefix(d.Text, "-")
+                        }
+                    }
+
+                    fmt.Println("diff took " + time.Since(start).String())
+                }
+            }
+        }
+
+        return nil
+    })
 }
 
 

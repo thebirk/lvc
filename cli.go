@@ -292,6 +292,19 @@ func commandCheckout() {
 }
 
 
+func commandDiff() {
+    assumeLvcRepo()
+
+    if flag.NArg() != 1 {
+        printUsage()
+        fmt.Fprintln(os.Stderr, "error: usage: checkout <branch>")
+        return
+    }
+
+    diffWorkingWith(getHeadID())
+}
+
+
 func main() {
     if len(os.Args) <= 1 {
         printUsage()
@@ -324,6 +337,8 @@ func main() {
         commandTags()
     case "checkout":
         commandCheckout()
+    case "diff":
+        commandDiff()
     default:
         printUsage()
         return
