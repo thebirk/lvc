@@ -640,6 +640,9 @@ func commitStage(msg string, author string, ) {
         commit = append(commit, hf)
     }
 
+    filesChanged := 0
+    filesCreated := 0
+
     stageFileLoop:
     for _, f := range stageFiles {
         // If file is new, commit anyways
@@ -657,6 +660,7 @@ func commitStage(msg string, author string, ) {
                         id: hash,
                     })
                     createBlobForFileWithID(f, hash)
+                    filesChanged++
                 }
 
                 continue stageFileLoop
@@ -669,6 +673,7 @@ func commitStage(msg string, author string, ) {
             id: id,
         })
         createBlobForFileWithID(f, id)
+        filesCreated++
     }
 
     headid := getHeadID()
@@ -691,4 +696,6 @@ func commitStage(msg string, author string, ) {
     clearStage()
 
     updateHead(id)
+
+    fmt.Printf("%s\n%d file(s) changes. %d file(s) created\n", hex.EncodeToString(id[:]), filesChanged, filesCreated)
 }
