@@ -54,6 +54,11 @@ import (
 //     - Option for default author
 
 
+// ID representing any object
+type ID [32]byte
+var zeroID = ID([32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+
+
 // Commit represents a single commit
 type Commit struct {
     id        ID
@@ -68,7 +73,7 @@ type Commit struct {
 // CommitFile represents a file with its name and its ID
 type CommitFile struct {
     name string
-    id ID
+    id   ID
 }
 
 // Branch represents a branch and its current commit id
@@ -84,9 +89,8 @@ type Tag struct {
 }
 
 
-// ID representing any object
-type ID [32]byte
-var zeroID = ID([32]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 var _lvcRoot = ""
 var errNotARepo = errors.New("not a repository")
@@ -587,6 +591,7 @@ func checkoutBranch(name string) {
 
 func initialize() {
     createDirectory(".lvc")
+    hideFile(".lvc")
     createDirectory(".lvc/commits")
     createDirectory(".lvc/blobs")
     createDirectory(".lvc/branches")
