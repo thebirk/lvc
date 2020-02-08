@@ -58,11 +58,12 @@ func walkUp(root string, walkFn walkFunc) error {
 }
 
 
-func printTextWithPrefix(text string, prefix string) {
+func printTextWithPrefixSuffix(writer io.Writer, text string, prefix string, suffix string) {
     scanner := bufio.NewScanner(strings.NewReader(text))
     for scanner.Scan() {
-        fmt.Print(prefix)
-        fmt.Println(scanner.Text())
+        fmt.Fprint(writer, prefix)
+        fmt.Fprint(writer, scanner.Text())
+        fmt.Fprintln(writer, suffix)
     }
 }
 

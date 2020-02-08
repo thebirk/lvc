@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -600,6 +601,14 @@ func diffWorkingWith(id ID) {
     //TODO: Handle files that are present in the commit, but missing in working
     dmp := diffmatchpatch.New()
 
+    less := exec.Command("less", "-FXr")
+    less.Stdout = os.Stdout
+    lessIn, err := less.StdinPipe()
+    if err != nil {
+        //TODO: If we cant grab the stdin for some reason just print it normally
+        panic(err)
+    }
+
     filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
         if info.IsDir() && info.Name() == ".lvc" {
             return filepath.SkipDir
@@ -613,34 +622,44 @@ func diffWorkingWith(id ID) {
                 if !idsAreEqual(id, cf.id) {
                     start := time.Now()
 
-                    workingFile, _ := ioutil.ReadFile(path)
-                    commitFile, _ := ioutil.ReadFile(root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]))
+                    
+                    if(true) {
+                        workingFile, _ := ioutil.ReadFile(path)
+                        commitFile, _ := ioutil.ReadFile(root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]))
 
-                    a, b, arr := dmp.DiffLinesToChars(string(commitFile), string(workingFile))
-                    diff := dmp.DiffMain(a, b, false)
-                    diff = dmp.DiffCharsToLines(diff, arr)
-                    diff = dmp.DiffCleanupSemantic(diff)
-
-                    // Show only the 4 first and last lines of and equals
-                    // if its longer than 8 or so lines maybe
-                    for _, d := range diff {
-                        switch d.Type {
-                        case diffmatchpatch.DiffEqual:
-                            fmt.Println(d.Text)
-                        case diffmatchpatch.DiffInsert:
-                            printTextWithPrefix(d.Text, "+")
-                        case diffmatchpatch.DiffDelete:
-                            printTextWithPrefix(d.Text, "-")
+                        a, b, arr := dmp.DiffLinesToChars(string(commitFile), string(workingFile))
+                        diff := dmp.DiffMain(a, b, false)
+                        diff = dmp.DiffCharsToLines(diff, arr)
+                        diff = dmp.DiffCleanupSemantic(diff)
+                        
+                        // Show only the 4 first and last lines of and equals
+                        // if its longer than 8 or so lines maybe
+                        for _, d := range diff {
+                            switch d.Type {
+                            case diffmatchpatch.DiffEqual:
+                                printTextWithPrefixSuffix(lessIn, d.Text, " ", "")
+                            case diffmatchpatch.DiffInsert:
+                                printTextWithPrefixSuffix(lessIn, d.Text, "\033[32m+", "\033[0m")
+                            case diffmatchpatch.DiffDelete:
+                                printTextWithPrefixSuffix(lessIn, d.Text, "\033[31m-", "\033[0m")
+                            }
                         }
+                    } else {
+                        cmd := exec.Command("diff", "-u", root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]), path)
+                        cmd.Stdout = os.Stdout
+                        cmd.Run()
                     }
 
                     fmt.Println("diff took " + time.Since(start).String())
                 }
             }
         }
-
+                
         return nil
     })
+
+    lessIn.Close()
+    less.Run()
 }
 
 
