@@ -102,6 +102,7 @@ func findLvcRoot() (string, error) {
     errFoundPath := errors.New("found root path")
     rootPath := ""
 
+    //FIXME: Seems to fail when called inside '.lvc'
     wd, _ := os.Getwd()
     err := walkUp(wd, func(pathUp string, info os.FileInfo) error {
         return filepath.Walk(pathUp, func(path string, info os.FileInfo, err error) error {
