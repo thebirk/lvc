@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -312,6 +313,74 @@ func commandDiff() {
 }
 
 
+func commandGraph() {
+    assumeLvcRepo()
+
+    f, err := os.Create("lvc.dot")
+    if err != nil {
+        panic(err)
+    }
+
+    f.WriteString("digraph lvc {\nrankdir=\"TB\";\n")
+
+    root, _ := findLvcRoot()
+    filepath.Walk(root + "/.lvc/commits/", func(path string, info os.FileInfo, err error) error {
+        if info.IsDir() {
+            return nil
+        }
+        idBytes, _ := hex.DecodeString(info.Name())
+        id := ID{}
+        copy(id[:], idBytes)
+        commit := getCommit(id)
+
+        if commit.parent == zeroID {
+            return nil
+        }
+
+        f.WriteString(fmt.Sprintf(
+            "commit_%s -> commit_%s [label=\"%s\"]\n",
+            hex.EncodeToString(commit.parent[:]),
+            hex.EncodeToString(id[:]),
+            commit.message,
+        ))
+
+        return nil
+    })
+
+    filepath.Walk(root + "/.lvc/branches/", func(path string, info os.FileInfo, err error) error {
+        if info.IsDir() {
+            return nil
+        }
+
+        id := getBranchID(info.Name())
+        
+        f.WriteString(fmt.Sprintf(
+            "\"%s\" [shape=box]\n",
+            info.Name(),
+        ))
+
+        f.WriteString(fmt.Sprintf(
+            "{rank=same; \"%s\" -> commit_%s}\n",
+            info.Name(),
+            hex.EncodeToString(id[:]),
+        ))
+
+        return nil
+    })
+
+    head := getBranchFromHead()
+    f.WriteString("HEAD [shape=box, color=red]\n")
+    f.WriteString(fmt.Sprintf(
+        "HEAD -> \"%s\"\n",
+        head.name,
+    ))
+
+
+    f.WriteString("}\n")
+    f.Close()
+}
+
+
 func main() {
     if len(os.Args) <= 1 {
         printUsage()
@@ -346,6 +415,8 @@ func main() {
         commandCheckout()
     case "diff":
         commandDiff()
+    case "graph":
+        commandGraph()
     default:
         printUsage()
         return
