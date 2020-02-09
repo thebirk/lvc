@@ -1,6 +1,5 @@
 #include <stdio.h>
 
-// Print a greeting for [name]
 void sayHello(const char *name) {
 	printf("Hello, %s!\n");
 }
