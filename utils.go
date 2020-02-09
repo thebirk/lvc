@@ -70,6 +70,39 @@ func countLines(s string) int {
 }
 
 
+func getFirstLines(text string, n int) (string, int) {
+    lines := 0
+
+    d := []byte(text)
+    for i, b := range d {
+        if lines == n {
+            return text[:i], lines
+        }
+        if b == 10 {
+            lines++
+        }
+    }
+
+    return text[:], lines
+}
+
+
+func getLastLines(text string, n int) (string, int) {
+    lines := 0
+    d := []byte(text)
+    for i := len(text)-1; i >= 0; i-- {
+        if lines == n {
+            return text[i:], lines
+        }
+        if d[i] == 10 {
+            lines++
+        }
+    }
+
+    return text, lines
+}
+
+
 func printTextWithPrefixSuffix(writer io.Writer, text string, prefix string, suffix string) int {
     totalLines := 0
     scanner := bufio.NewScanner(strings.NewReader(text))
@@ -83,6 +116,7 @@ func printTextWithPrefixSuffix(writer io.Writer, text string, prefix string, suf
 
     return totalLines
 }
+
 
 
 func writeFile(path string, text string) error {

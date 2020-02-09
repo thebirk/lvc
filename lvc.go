@@ -33,6 +33,11 @@ import (
 
 // how are we going to set author? per commit?
 
+// TODO: Store files in Commit as map with filename as key
+// FIXME: Checkout removes untracked files, this is not what we want
+
+// TODO: For mergin, allow commits to have multiple parents
+//       How do we handle merge conflicts? `lvc merge`, edits, then `lvc merge` again?
 
 // TODO: Have the possibliy to checkout tags and commits and land in a state like detached-HEAD in git,
 // but instead of allowing commit, require a branch first.
@@ -658,7 +663,21 @@ func diffWorkingWith(id ID) {
                         for _, d := range diff {
                             switch d.Type {
                             case diffmatchpatch.DiffEqual:
-                                printTextWithPrefixSuffix(lessIn, d.Text, " ", "")
+                                //var prev diffmatchpatch.Diff
+                                //var next diffmatchpatch.Diff
+                                //if i-1 >= 0 {
+                                //    prev = diff[i-1]
+                                //}
+                                //if i+1 < len(diff) {
+                                //    next = diff[i+1]
+                                //}
+
+                                first, _ := getFirstLines(d.Text, 3)
+                                last, _ := getLastLines(d.Text, 3)
+
+                                printTextWithPrefixSuffix(lessIn, first, " ", "")
+                                fmt.Fprintln(lessIn, "...")
+                                printTextWithPrefixSuffix(lessIn, last, " ", "")
                             case diffmatchpatch.DiffInsert:
                                 printTextWithPrefixSuffix(lessIn, d.Text, "\033[32m+", "\033[0m")
                             case diffmatchpatch.DiffDelete:
