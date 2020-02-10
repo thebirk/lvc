@@ -105,7 +105,7 @@ func getLastLines(text string, n int) (string, int) {
 
 func getLineAndOffsetInString(text string, offset int) (int, int) {
     line := 1
-    char := 0
+    char := 1
 
     for i, b := range []byte(text) {
         if i == offset {
@@ -113,7 +113,7 @@ func getLineAndOffsetInString(text string, offset int) (int, int) {
         }
 
         if b == 10 {
-            char = 0
+            char = 1
             line++
         } else {
             char++

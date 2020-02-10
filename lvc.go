@@ -620,13 +620,17 @@ func diffWorkingWith(id ID) {
     //TODO: Handle files that are present in the commit, but missing in working
     dmp := diffmatchpatch.New()
 
-    less := exec.Command("./less.exe", "-FXr")
-    if false && runtime.GOOS == "windows" {
+    less := exec.Cmd{
+        Path: "less",
+        Args: []string{"less", "-FXr"},
+    }
+    if true && runtime.GOOS == "windows" {
         dir, err := os.Executable()
         if err != nil {
             panic(err)
         }
         less.Dir = filepath.Dir(dir)
+        fmt.Println(less.Dir)
     }
     less.Stdout = os.Stdout
     less.Stderr = os.Stderr
@@ -639,7 +643,6 @@ func diffWorkingWith(id ID) {
     if err != nil {
         panic(err)
     }
-    //lessIn := os.Stdout
 
     filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
         if info.IsDir() && info.Name() == ".lvc" {
@@ -679,16 +682,18 @@ func diffWorkingWith(id ID) {
 
                         fmt.Fprintf(lessIn, "%s - %d inserts(+), %d deletions(-)\n", path, totalInserts, totalDeletions)
 
+                        offset := 0
                         for i, d := range diff {
                             switch d.Type {
                             case diffmatchpatch.DiffEqual:
                                 first, _ := getFirstLines(d.Text, 3)
                                 last, _ := getLastLines(d.Text, 3)
-
+                                
                                 if i-1 >= 0 {
                                     printTextWithPrefixSuffix(lessIn, first, " ", "")
                                 }
-                                line, _ := getLineAndOffsetInString(d.Text, strings.Index(string(commitFile), last))
+                                // TODO: This isnt quite right, but usable for now
+                                line, _ := getLineAndOffsetInString(string(commitFile), offset+len(d.Text))
                                 fmt.Fprintf(lessIn, "@ %s - %d\n", path, line)
                                 printTextWithPrefixSuffix(lessIn, last, " ", "")
                             case diffmatchpatch.DiffInsert:
@@ -697,6 +702,7 @@ func diffWorkingWith(id ID) {
                             case diffmatchpatch.DiffDelete:
                                 printTextWithPrefixSuffix(lessIn, d.Text, "\033[31m-", "\033[0m")
                             }
+                            offset += len(d.Text)
                         }
 
                         fmt.Fprintln(lessIn)
