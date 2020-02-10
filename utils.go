@@ -91,15 +91,36 @@ func getLastLines(text string, n int) (string, int) {
     lines := 0
     d := []byte(text)
     for i := len(text)-1; i >= 0; i-- {
-        if lines == n {
-            return text[i:], lines
-        }
         if d[i] == 10 {
             lines++
+            if lines == n+1 {
+                return text[i+1:], lines
+            }
         }
     }
 
     return text, lines
+}
+
+
+func getLineAndOffsetInString(text string, offset int) (int, int) {
+    line := 1
+    char := 0
+
+    for i, b := range []byte(text) {
+        if i == offset {
+            break
+        }
+
+        if b == 10 {
+            char = 0
+            line++
+        } else {
+            char++
+        }
+    }
+
+    return line, char
 }
 
 

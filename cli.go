@@ -61,7 +61,7 @@ func assumeLvcRepo() {
 
 
 func commandInit() {
-    if flag.NArg() != 1 {
+    if flag.NArg() != 0 {
         printUsage()
         fmt.Println("error: init takes no arguments")
         return
@@ -106,7 +106,7 @@ func commandAdd() {
     }
 
     file_loop:
-    for _, file := range flag.Args()[1:] {
+    for _, file := range flag.Args() {
         info, err := os.Stat(file);
         if os.IsNotExist(err) {
             fmt.Fprintln(os.Stderr, "error: " + file + " does not exist")
@@ -134,13 +134,13 @@ func commandCommit() {
     assumeLvcRepo()
 
     //TODO: ensure .lvc etc.
-    if flag.NArg() != 2 {
+    if flag.NArg() != 1 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: commit only takes the form 'commit \"msg\"")
         return
     }
 
-    commitStage(flag.Args()[1], "thebirk <totally@fake.mail>")
+    commitStage(flag.Args()[0], "thebirk <totally@fake.mail>")
 }
 
 
@@ -181,10 +181,10 @@ func commandLog() {
 
     var commit Commit
     
-    if flag.NArg() >= 2 {
+    if flag.NArg() >= 1 {
         // if arg is a valid id, check if that exists
         // otherwise check if it is a branch
-        arg := flag.Args()[1]
+        arg := flag.Args()[0]
         if len(arg) == 64 {
             // This looks like an id
             stringID, err := hex.DecodeString(arg)
@@ -236,7 +236,7 @@ func commandLog() {
 
 func commandBranch() {
     assumeLvcRepo()
-    if flag.NArg() == 1 {
+    if flag.NArg() == 0 {
         branches := getAllBranches()
         current := getBranchFromHead()
         for _, b := range branches {
@@ -250,7 +250,7 @@ func commandBranch() {
         }
     } else {
         //TODO: assume only one extra arg for now, handle this later
-        createNewBranchFromHead(flag.Arg(1))
+        createNewBranchFromHead(flag.Arg(0))
     }
 }
 
@@ -258,13 +258,13 @@ func commandBranch() {
 func commandTag() {
     assumeLvcRepo()
 
-    if flag.NArg() != 2 {
+    if flag.NArg() != 1 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: usage: tag <tag-name>")
         return
     }
 
-    tagName := flag.Arg(1)
+    tagName := flag.Arg(0)
 
     createTagAtHead(tagName)
 }
@@ -273,7 +273,7 @@ func commandTag() {
 func commandTags() {
     assumeLvcRepo()
 
-    if flag.NArg() != 1 || flag.NFlag() != 0 {
+    if flag.NArg() != 0 || flag.NFlag() != 0 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: command 'tags' takes no arguments")
         return
@@ -289,13 +289,13 @@ func commandTags() {
 func commandCheckout() {
     assumeLvcRepo()
 
-    if flag.NArg() != 2 {
+    if flag.NArg() != 1 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: usage: checkout <branch>")
         return
     }
 
-    branchName := flag.Arg(1)
+    branchName := flag.Arg(0)
     checkoutBranch(branchName)
 }
 
@@ -303,9 +303,9 @@ func commandCheckout() {
 func commandDiff() {
     assumeLvcRepo()
 
-    if flag.NArg() != 1 {
+    if flag.NArg() != 0 {
         printUsage()
-        fmt.Fprintln(os.Stderr, "error: usage: checkout <branch>")
+        fmt.Fprintln(os.Stderr, "error: usage: diff")
         return
     }
 
@@ -390,7 +390,7 @@ func main() {
 
     //IDEA: Have some argument like '--root=path' and plop that shit into _lvcRoot
 
-    flag.Parse()
+    flag.CommandLine.Parse(os.Args[2:])
 
     switch os.Args[1] {
     case "init":

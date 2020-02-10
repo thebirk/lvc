@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -32,6 +33,11 @@ import (
 // them and having those changes come with the commit.
 
 // how are we going to set author? per commit?
+
+// TODO: Switch over to some other terminology for commands
+//       untrack instead of rm
+//       stage instead of add
+//       
 
 // TODO: Store files in Commit as map with filename as key
 // FIXME: Checkout removes untracked files, this is not what we want
@@ -614,13 +620,26 @@ func diffWorkingWith(id ID) {
     //TODO: Handle files that are present in the commit, but missing in working
     dmp := diffmatchpatch.New()
 
-    less := exec.Command("less", "-FXr")
+    less := exec.Command("./less.exe", "-FXr")
+    if false && runtime.GOOS == "windows" {
+        dir, err := os.Executable()
+        if err != nil {
+            panic(err)
+        }
+        less.Dir = filepath.Dir(dir)
+    }
     less.Stdout = os.Stdout
+    less.Stderr = os.Stderr
     lessIn, err := less.StdinPipe()
     if err != nil {
         //TODO: If we cant grab the stdin for some reason just print it normally
         panic(err)
     }
+    err = less.Start()
+    if err != nil {
+        panic(err)
+    }
+    //lessIn := os.Stdout
 
     filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
         if info.IsDir() && info.Name() == ".lvc" {
@@ -642,7 +661,7 @@ func diffWorkingWith(id ID) {
                         a, b, arr := dmp.DiffLinesToChars(string(commitFile), string(workingFile))
                         diff := dmp.DiffMain(a, b, false)
                         diff = dmp.DiffCharsToLines(diff, arr)
-                        diff = dmp.DiffCleanupSemantic(diff)
+                        //diff = dmp.DiffCleanupSemantic(diff)
                         
                         // Show only the 4 first and last lines of and equals
                         // if its longer than 8 or so lines maybe
@@ -660,26 +679,21 @@ func diffWorkingWith(id ID) {
 
                         fmt.Fprintf(lessIn, "%s - %d inserts(+), %d deletions(-)\n", path, totalInserts, totalDeletions)
 
-                        for _, d := range diff {
+                        for i, d := range diff {
                             switch d.Type {
                             case diffmatchpatch.DiffEqual:
-                                //var prev diffmatchpatch.Diff
-                                //var next diffmatchpatch.Diff
-                                //if i-1 >= 0 {
-                                //    prev = diff[i-1]
-                                //}
-                                //if i+1 < len(diff) {
-                                //    next = diff[i+1]
-                                //}
-
                                 first, _ := getFirstLines(d.Text, 3)
                                 last, _ := getLastLines(d.Text, 3)
 
-                                printTextWithPrefixSuffix(lessIn, first, " ", "")
-                                fmt.Fprintln(lessIn, "...")
+                                if i-1 >= 0 {
+                                    printTextWithPrefixSuffix(lessIn, first, " ", "")
+                                }
+                                line, _ := getLineAndOffsetInString(d.Text, strings.Index(string(commitFile), last))
+                                fmt.Fprintf(lessIn, "@ %s - %d\n", path, line)
                                 printTextWithPrefixSuffix(lessIn, last, " ", "")
                             case diffmatchpatch.DiffInsert:
                                 printTextWithPrefixSuffix(lessIn, d.Text, "\033[32m+", "\033[0m")
+                                //fmt.Fprintln(lessIn, "+ '" + d.Text + "'")
                             case diffmatchpatch.DiffDelete:
                                 printTextWithPrefixSuffix(lessIn, d.Text, "\033[31m-", "\033[0m")
                             }
@@ -701,7 +715,10 @@ func diffWorkingWith(id ID) {
     })
 
     lessIn.Close()
-    less.Run()
+    err = less.Wait()
+    if err != nil {
+        panic(err)
+    }
 }
 
 
