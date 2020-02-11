@@ -104,6 +104,9 @@ func commandAdd() {
         if err != nil {
             //TODO: check why glob can fail
         }
+        if globs == nil {
+            continue
+        }
         for _, g := range globs {
             files = append(files, g)
         }
@@ -375,6 +378,69 @@ func commandGraph() {
 }
 
 
+func commandInfo() {
+    assumeLvcRepo()
+
+    cmd, in := startPager()
+
+    root, _ := findLvcRoot()
+    fmt.Fprintln(in, "Root directory:    " + root)
+
+    head := getHead()
+
+    firstCommit := getFirstCommit(head.id)
+    fmt.Fprintln(in, "First commit date: " + firstCommit.timestamp.Local().String())
+
+    fmt.Fprintln(in, "Last  commit date: " + head.timestamp.Local().String())
+
+    fmt.Fprintf(in, "Most recent commit message:\n    %s\n", head.message)
+    fmt.Fprintln(in)
+
+    fmt.Fprintf(in, "Number of currently tracked files: %d\n", len(head.files))
+ 
+    { // ALl branches and their commit count.
+        allBranches := getAllBranches()
+        currentBranch := getBranchFromHead()
+
+        maxBranchNameWidth := 0
+        maxCommitsWidth := 0
+        for _, b := range allBranches {
+            if len(b.name) > maxBranchNameWidth {
+                maxBranchNameWidth = len(b.name)
+            }
+
+            commits := countCommitsInBranch(b.name)
+            digits := 0
+            for commits > 0 {
+                digits++
+                commits /= 10
+            }
+
+            if digits > maxCommitsWidth {
+                maxCommitsWidth = digits
+            }
+        }
+
+        fmt.Fprintf(in, "Branches: (name, total commits)\n")
+        for _, b := range allBranches {
+            commits := countCommitsInBranch(b.name)
+            if idsAreEqual(currentBranch.id, b.id) {
+                fmt.Fprintf(in, "    *")
+            } else {
+                fmt.Fprintf(in, "     ")
+            }
+
+            fmt.Fprintf(in, "%-*s - %*d\n", maxBranchNameWidth, b.name, maxCommitsWidth, commits)
+        }
+    }
+
+    fmt.Fprintln(in)
+
+
+    endPager(cmd, in)
+}
+
+
 func main() {
     if len(os.Args) <= 1 {
         printUsage()
@@ -386,6 +452,12 @@ func main() {
 
     flag.CommandLine.Parse(os.Args[2:])
 
+    //TODO: Commands:
+    // - untrack
+    // - merge
+    // - list : list all currently tracked files
+    // - info : some info and stats about the repo, number of files, root dir, creation date ,last commit date, total commits in active branch, active branch
+
     switch os.Args[1] {
     case "init":
         commandInit()
@@ -395,7 +467,7 @@ func main() {
         commandStatus()
     case "commit":
         commandCommit()
-    case "rm":
+    case "remove":
         panic("//TODO")
     case "log":
         commandLog()
@@ -411,6 +483,8 @@ func main() {
         commandDiff()
     case "graph":
         commandGraph()
+    case "info":
+        commandInfo()
     default:
         printUsage()
         return

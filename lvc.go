@@ -210,6 +210,8 @@ func stageFiles(files []string) {
             continue
         }
 
+        //TODO: Check if 'f' is inside OUT .lvc, if so ignore it
+
         for _, sf := range stagedFiles {
             if sf == f {
                 continue file_loop
@@ -225,6 +227,8 @@ func stageFiles(files []string) {
             panic(err)
         }
         sw.WriteString(rel + "\n")
+
+        fmt.Println("Staged " + rel + "")
     }
 }
 
@@ -604,6 +608,28 @@ func getAllTags() []Tag {
     }
     
     return tags
+}
+
+
+func getFirstCommit(startCommit ID) Commit {
+    commit := getCommit(startCommit)
+    for commit.parent != zeroID {
+        commit = getCommit(commit.parent)
+    }
+    return commit
+}
+
+
+func countCommitsInBranch(branch string) int {
+    count := 0
+
+    b := getBranch(branch)
+    for b.parent != zeroID {
+        b = getCommit(b.parent)
+        count++
+    }
+
+    return count
 }
 
 
