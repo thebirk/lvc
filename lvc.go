@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -165,9 +164,74 @@ func createBlob(data []byte) ID {
 }
 
 
+func pathIsChildOfRoot(path string) bool {
+    root, _ := findLvcRoot()
+    abs, err := filepath.Abs(path)
+    if err != nil {
+        return false
+    }
+
+    rel, err := filepath.Rel(root, abs)
+    if err != nil {
+        return false
+    }
+
+    return !strings.HasPrefix(rel, "..")
+}
+
+
+func stageFiles(files []string) {
+    root, _ := findLvcRoot()
+
+    sw, err := os.OpenFile(filepath.Join(root, ".lvc", "stage"), os.O_APPEND|os.O_WRONLY, 0644)
+    if err != nil {
+        //TODO
+        panic(err)
+    }
+
+    stagedFiles := readStageFile()
+
+    file_loop:
+    for _, f := range files {
+        if !pathIsChildOfRoot(f) {
+            fmt.Fprintln(os.Stderr, "error: '" + f + "' is outside the repository")
+            continue
+        }
+        info, err := os.Stat(f);
+        if os.IsNotExist(err) {
+            fmt.Fprintln(os.Stderr, "error: '" + f + "' does not exist")
+            continue
+        } else if err != nil {
+            panic(err)
+        }
+
+        if info.IsDir() {
+            fmt.Fprintln(os.Stderr, "error: cannot stage directory "  + f)
+            continue
+        }
+
+        for _, sf := range stagedFiles {
+            if sf == f {
+                continue file_loop
+            }
+        }
+
+        abs, err := filepath.Abs(f)
+        if err != nil {
+            panic(err)
+        }
+        rel, err := filepath.Rel(root, abs)
+        if err != nil {
+            panic(err)
+        }
+        sw.WriteString(rel + "\n")
+    }
+}
+
 
 func readStageFile() []string {
-    stageReader, err := os.Open(".lvc/stage")
+    root, _ := findLvcRoot()
+    stageReader, err := os.Open(filepath.Join(root, ".lvc", "stage"))
     if err != nil {
         //TODO: Handle
         panic(err)
@@ -246,12 +310,12 @@ func createBlobForFileWithID(path string, id ID) {
     if err != nil {
         panic(err)
     }
-    ioutil.WriteFile(".lvc/blobs/" + hex.EncodeToString(id[:]), data, 0644)
+    ioutil.WriteFile(filepath.Join(".lvc/blobs/", hex.EncodeToString(id[:])), data, 0644)
 }
 
 
 func getCommitWithoutFiles(id ID) Commit {
-    reader, err := os.Open(".lvc/commits/" + hex.EncodeToString(id[:]))
+    reader, err := os.Open(filepath.Join(".lvc/commits/", hex.EncodeToString(id[:])))
     if err != nil {
         //TODO: Handle
         panic(err)
@@ -288,7 +352,7 @@ func getCommitWithoutFiles(id ID) Commit {
 
 
 func getCommit(id ID) Commit {
-    reader, err := os.Open(".lvc/commits/" + hex.EncodeToString(id[:]))
+    reader, err := os.Open(filepath.Join(".lvc/commits/", hex.EncodeToString(id[:])))
     if err != nil {
         //TODO: Handle
         panic(err)
@@ -348,12 +412,12 @@ func getHeadID() ID {
     // Chop of newline
     head := string(headBytes[:len(headBytes)-1])
 
-    if _, err := os.Stat(".lvc/branches/" + head); os.IsNotExist(err) {
+    if _, err := os.Stat(filepath.Join(".lvc/branches/", head)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + head + "'")
         os.Exit(1)
     }
 
-    branchBytes, err := ioutil.ReadFile(".lvc/branches/" + head)
+    branchBytes, err := ioutil.ReadFile(filepath.Join(".lvc/branches/", head))
     if err != nil {
         panic(err)
     }
@@ -379,12 +443,12 @@ func getHead() Commit {
 
 
 func getBranchID(name string) ID {
-    if _, err := os.Open(".lvc/branches/" + name); os.IsNotExist(err) {
+    if _, err := os.Open(filepath.Join(".lvc/branches/", name)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + name + "'")
         os.Exit(1)
     }
 
-    branchBytes, err := ioutil.ReadFile(".lvc/branches/" + name)
+    branchBytes, err := ioutil.ReadFile(filepath.Join(".lvc/branches/", name))
     if err != nil {
         panic(err)
     }
@@ -425,13 +489,13 @@ func getBranchFromHead() Branch {
 
 
 func updateBranch(name string, id ID) {
-    if _, err := os.Open(".lvc/branches/" + name); os.IsNotExist(err) {
+    if _, err := os.Open(filepath.Join(".lvc/branches/", name)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + name + "'")
         os.Exit(1)
     }
 
     // WriteFile truncates
-    err := ioutil.WriteFile(".lvc/branches/" + name, []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
+    err := ioutil.WriteFile(filepath.Join(".lvc/branches/", name), []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
     if err != nil {
         panic(err)
     }
@@ -462,7 +526,7 @@ func createNewBranchFromHead(name string) {
     }
 
     id := getHeadID()
-    err := ioutil.WriteFile(".lvc/branches/" + name, []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
+    err := ioutil.WriteFile(filepath.Join(".lvc/branches/", name), []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
     if err != nil {
         panic(err)
     }
@@ -489,23 +553,23 @@ func getAllBranches() []Branch {
 
 
 func createTagAtHead(name string) {
-    if _, err := os.Open(".lvc/tags/" + name); !os.IsNotExist(err) {
+    if _, err := os.Open(filepath.Join(".lvc/tags/", name)); !os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: tag '" + name + "' already exists")
         os.Exit(1)
     }
     headID := getHeadID()
 
-    ioutil.WriteFile(".lvc/tags/" + name, []byte(hex.EncodeToString(headID[:]) + "\n"), 0644)
+    ioutil.WriteFile(filepath.Join(".lvc/tags/", name), []byte(hex.EncodeToString(headID[:]) + "\n"), 0644)
 }
 
 
 func getTagID(name string) ID {
-    if _, err := os.Open(".lvc/tags/" + name); os.IsNotExist(err) {
+    if _, err := os.Open(filepath.Join(".lvc/tags/", name)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown tag '" + name + "'")
         os.Exit(1)
     }
 
-    tagBytes, err := ioutil.ReadFile(".lvc/tags/" + name)
+    tagBytes, err := ioutil.ReadFile(filepath.Join(".lvc/tags/", name))
     if err != nil {
         panic(err)
     }
@@ -600,7 +664,7 @@ func checkoutBranch(name string) {
     
 
     for _, bf := range branch.files {
-        blobPath := ".lvc/blobs/" + hex.EncodeToString(bf.id[:])
+        blobPath := filepath.Join(".lvc/blobs/", hex.EncodeToString(bf.id[:]))
         copyFile(blobPath, bf.name)
     }
 
@@ -620,32 +684,8 @@ func diffWorkingWith(id ID) {
     //TODO: Handle files that are present in the commit, but missing in working
     dmp := diffmatchpatch.New()
 
-    var less *exec.Cmd
-    if runtime.GOOS == "windows" {
-        less = &exec.Cmd{
-            Path: "less",
-            Args: []string{"-FXr"},
-        }
-        dir, err := os.Executable()
-        if err != nil {
-            panic(err)
-        }
-        less.Dir = filepath.Dir(dir)
-    } else {
-        less = exec.Command("less", "-FXr")
-    }
-    less.Stdout = os.Stdout
-    less.Stderr = os.Stderr
-    lessIn, err := less.StdinPipe()
-    if err != nil {
-        //TODO: If we cant grab the stdin for some reason just print it normally
-        panic(err)
-    }
-    err = less.Start()
-    if err != nil {
-        panic(err)
-    }
-
+    cmd, pagerIn := startPager()
+    
     filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
         if info.IsDir() && info.Name() == ".lvc" {
             return filepath.SkipDir
@@ -661,7 +701,7 @@ func diffWorkingWith(id ID) {
                     
                     if(true) {
                         workingFile, _ := ioutil.ReadFile(path)
-                        commitFile, _ := ioutil.ReadFile(root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]))
+                        commitFile, _ := ioutil.ReadFile(filepath.Join(root, "/.lvc/blobs/", hex.EncodeToString(cf.id[:])))
 
                         a, b, arr := dmp.DiffLinesToChars(string(commitFile), string(workingFile))
                         diff := dmp.DiffMain(a, b, false)
@@ -682,7 +722,7 @@ func diffWorkingWith(id ID) {
                             }
                         }
 
-                        fmt.Fprintf(lessIn, "%s - %d inserts(+), %d deletions(-)\n", path, totalInserts, totalDeletions)
+                        fmt.Fprintf(pagerIn, "%s - %d inserts(+), %d deletions(-)\n", path, totalInserts, totalDeletions)
 
                         offset := 0
                         for i, d := range diff {
@@ -692,29 +732,27 @@ func diffWorkingWith(id ID) {
                                 last, _ := getLastLines(d.Text, 3)
                                 
                                 if i-1 >= 0 {
-                                    printTextWithPrefixSuffix(lessIn, first, " ", "")
+                                    printTextWithPrefixSuffix(pagerIn, first, " ", "")
                                 }
                                 // TODO: This isnt quite right, but usable for now
                                 line, _ := getLineAndOffsetInString(string(commitFile), offset+len(d.Text))
-                                fmt.Fprintf(lessIn, "@ %s - %d\n", path, line)
-                                printTextWithPrefixSuffix(lessIn, last, " ", "")
+                                fmt.Fprintf(pagerIn, "@ %s - %d\n", path, line)
+                                printTextWithPrefixSuffix(pagerIn, last, " ", "")
                             case diffmatchpatch.DiffInsert:
-                                printTextWithPrefixSuffix(lessIn, d.Text, "\033[32m+", "\033[0m")
-                                //fmt.Fprintln(lessIn, "+ '" + d.Text + "'")
+                                printTextWithPrefixSuffix(pagerIn, d.Text, "\033[32m+", "\033[0m")
                             case diffmatchpatch.DiffDelete:
-                                printTextWithPrefixSuffix(lessIn, d.Text, "\033[31m-", "\033[0m")
+                                printTextWithPrefixSuffix(pagerIn, d.Text, "\033[31m-", "\033[0m")
                             }
                             offset += len(d.Text)
                         }
 
-                        fmt.Fprintln(lessIn)
+                        fmt.Fprintln(pagerIn)
                     } else {
-                        cmd := exec.Command("diff", "-u", root + "/.lvc/blobs/" + hex.EncodeToString(cf.id[:]), path)
+                        cmd := exec.Command("diff", "-u", filepath.Join(root, "/.lvc/blobs/", hex.EncodeToString(cf.id[:]), path))
                         cmd.Stdout = os.Stdout
                         cmd.Run()
                     }
 
-                    //fmt.Fprintln(lessIn, "diff took " + time.Since(start).String())
                 }
             }
         }
@@ -722,11 +760,7 @@ func diffWorkingWith(id ID) {
         return nil
     })
 
-    lessIn.Close()
-    err = less.Wait()
-    if err != nil {
-        panic(err)
-    }
+    endPager(cmd, pagerIn)
 }
 
 
@@ -745,7 +779,7 @@ func initialize() {
     // create the baseline commit
     baseCommit := []byte("\n\n\n"+time.Now().Format(time.RFC3339)+"\n")
     commitID := ID(sha256.Sum256([]byte(baseCommit)))
-    ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(commitID[:]), baseCommit, 0644)
+    ioutil.WriteFile(filepath.Join(".lvc/commits/", hex.EncodeToString(commitID[:])), baseCommit, 0644)
 
     // point master to bare commit
     ioutil.WriteFile(".lvc/branches/master", []byte(hex.EncodeToString(commitID[:]) + "\n"), 0644)
@@ -834,7 +868,7 @@ func commitStage(msg string, author string, ) {
     id := ID(sha256.Sum256([]byte(final)))
 
     // write commit to file
-    ioutil.WriteFile(".lvc/commits/" + hex.EncodeToString(id[:]), []byte(final), 0644)
+    ioutil.WriteFile(filepath.Join(".lvc/commits/", hex.EncodeToString(id[:])), []byte(final), 0644)
 
     clearStage()
 

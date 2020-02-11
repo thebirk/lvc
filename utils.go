@@ -69,7 +69,7 @@ func startPager() (*exec.Cmd, io.WriteCloser) {
         }
         dir, err := os.Executable()
         if err != nil {
-            panic(err)
+            return nil, os.Stdout
         }
         less.Dir = filepath.Dir(dir)
     } else {
@@ -79,15 +79,22 @@ func startPager() (*exec.Cmd, io.WriteCloser) {
     less.Stderr = os.Stderr
     lessIn, err := less.StdinPipe()
     if err != nil {
-        //TODO: If we cant grab the stdin for some reason just print it normally
-        panic(err)
+        return nil, os.Stdout
     }
     err = less.Start()
     if err != nil {
-        panic(err)
+        return nil, os.Stdout
     }
 
     return less, lessIn
+}
+
+
+func endPager(cmd *exec.Cmd, in io.WriteCloser) {
+    if cmd != nil {
+        in.Close()
+        cmd.Wait()
+    }
 }
 
 

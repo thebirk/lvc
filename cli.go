@@ -97,35 +97,19 @@ func commandAdd() {
         return
     }
 
-    stagedFiles := readStageFile()
+    files := make([]string, 0)
 
-    sw, err := os.OpenFile(".lvc/stage", os.O_APPEND|os.O_WRONLY, 0644)
-    if err != nil {
-        //TODO
-        panic(err)
+    for _, f := range flag.Args() {
+        globs, err := filepath.Glob(f)
+        if err != nil {
+            //TODO: check why glob can fail
+        }
+        for _, g := range globs {
+            files = append(files, g)
+        }
     }
 
-    file_loop:
-    for _, file := range flag.Args() {
-        info, err := os.Stat(file);
-        if os.IsNotExist(err) {
-            fmt.Fprintln(os.Stderr, "error: " + file + " does not exist")
-            continue
-        } else if err != nil {
-            panic(err)
-        }
-
-        if info.IsDir() {
-            fmt.Fprintln(os.Stderr, "error: cannot stage directory "  + file)
-        }
-
-        for _, sf := range stagedFiles {
-            if sf == file {
-                continue file_loop
-            }
-        }
-        sw.WriteString(file + "\n")
-    }
+    stageFiles(files)
 }
 
 
@@ -234,8 +218,7 @@ func commandLog() {
         commit = getCommitWithoutFiles(commit.parent)
     }
 
-    in.Close()
-    cmd.Wait()
+    endPager(cmd, in)
 }
 
 
