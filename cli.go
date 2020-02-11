@@ -334,6 +334,11 @@ func commandGraph() {
             commit.message,
         ))
 
+        parentsParent := getCommit(commit.parent)
+        if parentsParent.parent == zeroID {
+            return nil   
+        }
+
         f.WriteString(fmt.Sprintf(
             "commit_%s -> commit_%s [label=\"%s\"]\n",
             hex.EncodeToString(commit.parent[:]),

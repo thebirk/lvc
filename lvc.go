@@ -213,7 +213,7 @@ func stageFiles(files []string) {
         //TODO: Check if 'f' is inside OUT .lvc, if so ignore it
 
         for _, sf := range stagedFiles {
-            if sf == f {
+            if pathsAreEqual(sf, f) {
                 continue file_loop
             }
         }
@@ -263,6 +263,7 @@ func getModifiedFiles() []string {
     }
 
     filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+        abs := path
         path, err = filepath.Rel(root, path)
         if err != nil {
             panic(err)
@@ -272,8 +273,8 @@ func getModifiedFiles() []string {
         }
 
         for _, tf := range trackedFiles.files {
-            if tf.name == path {
-                currentHash := getFileHash(tf.name)
+            if pathsAreEqual(tf.name, path) {
+                currentHash := getFileHash(abs)
 
                 if !idsAreEqual(currentHash, tf.id) {
                     files = append(files, tf.name)
@@ -314,12 +315,16 @@ func createBlobForFileWithID(path string, id ID) {
     if err != nil {
         panic(err)
     }
-    ioutil.WriteFile(filepath.Join(".lvc/blobs/", hex.EncodeToString(id[:])), data, 0644)
+
+    root, _ := findLvcRoot()
+
+    ioutil.WriteFile(filepath.Join(root, ".lvc/blobs/", hex.EncodeToString(id[:])), data, 0644)
 }
 
 
 func getCommitWithoutFiles(id ID) Commit {
-    reader, err := os.Open(filepath.Join(".lvc/commits/", hex.EncodeToString(id[:])))
+    root, _ := findLvcRoot()
+    reader, err := os.Open(filepath.Join(root, ".lvc/commits/", hex.EncodeToString(id[:])))
     if err != nil {
         //TODO: Handle
         panic(err)
@@ -356,7 +361,8 @@ func getCommitWithoutFiles(id ID) Commit {
 
 
 func getCommit(id ID) Commit {
-    reader, err := os.Open(filepath.Join(".lvc/commits/", hex.EncodeToString(id[:])))
+    root, _ := findLvcRoot()
+    reader, err := os.Open(filepath.Join(root, ".lvc/commits/", hex.EncodeToString(id[:])))
     if err != nil {
         //TODO: Handle
         panic(err)
@@ -389,7 +395,7 @@ func getCommit(id ID) Commit {
     }
 
     commit.files = make([]CommitFile, 0)
-    
+
     for scanner.Scan() {
         line := strings.SplitN(scanner.Text(), " ", 2)
         sid, err := hex.DecodeString(line[0])
@@ -409,19 +415,20 @@ func getCommit(id ID) Commit {
 
 
 func getHeadID() ID {
-    headBytes, err := ioutil.ReadFile(".lvc/head")
+    root, _ := findLvcRoot()
+    headBytes, err := ioutil.ReadFile(filepath.Join(root, ".lvc/head"))
     if err != nil {
         panic(err)
     }
     // Chop of newline
     head := string(headBytes[:len(headBytes)-1])
 
-    if _, err := os.Stat(filepath.Join(".lvc/branches/", head)); os.IsNotExist(err) {
+    if _, err := os.Stat(filepath.Join(root, ".lvc/branches/", head)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + head + "'")
         os.Exit(1)
     }
 
-    branchBytes, err := ioutil.ReadFile(filepath.Join(".lvc/branches/", head))
+    branchBytes, err := ioutil.ReadFile(filepath.Join(root, ".lvc/branches/", head))
     if err != nil {
         panic(err)
     }
@@ -447,12 +454,13 @@ func getHead() Commit {
 
 
 func getBranchID(name string) ID {
-    if _, err := os.Open(filepath.Join(".lvc/branches/", name)); os.IsNotExist(err) {
+    root, _ := findLvcRoot()
+    if _, err := os.Open(filepath.Join(root, ".lvc/branches/", name)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + name + "'")
         os.Exit(1)
     }
 
-    branchBytes, err := ioutil.ReadFile(filepath.Join(".lvc/branches/", name))
+    branchBytes, err := ioutil.ReadFile(filepath.Join(root, ".lvc/branches/", name))
     if err != nil {
         panic(err)
     }
@@ -478,7 +486,8 @@ func getBranch(name string) Commit {
 
 
 func getBranchFromHead() Branch {
-    headBytes, err := ioutil.ReadFile(".lvc/head")
+    root, _ := findLvcRoot()
+    headBytes, err := ioutil.ReadFile(filepath.Join(root, ".lvc/head"))
     if err != nil {
         panic(err)
     }
@@ -493,13 +502,14 @@ func getBranchFromHead() Branch {
 
 
 func updateBranch(name string, id ID) {
-    if _, err := os.Open(filepath.Join(".lvc/branches/", name)); os.IsNotExist(err) {
+    root, _ := findLvcRoot()
+    if _, err := os.Open(filepath.Join(root, ".lvc/branches/", name)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown branch '" + name + "'")
         os.Exit(1)
     }
 
     // WriteFile truncates
-    err := ioutil.WriteFile(filepath.Join(".lvc/branches/", name), []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
+    err := ioutil.WriteFile(filepath.Join(root, ".lvc/branches/", name), []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
     if err != nil {
         panic(err)
     }
@@ -514,7 +524,8 @@ func updateHead(id ID) {
 
 func clearStage() {
     // clear stage file
-    if err := os.Truncate(".lvc/stage", 0); err != nil {
+    root, _ := findLvcRoot()
+    if err := os.Truncate(filepath.Join(root, ".lvc/stage"), 0); err != nil {
         panic(err)
     }
 }
@@ -529,8 +540,10 @@ func createNewBranchFromHead(name string) {
         }
     }
 
+    root, _ := findLvcRoot()
+
     id := getHeadID()
-    err := ioutil.WriteFile(filepath.Join(".lvc/branches/", name), []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
+    err := ioutil.WriteFile(filepath.Join(root, ".lvc/branches/", name), []byte(hex.EncodeToString(id[:]) + "\n"), 0644)
     if err != nil {
         panic(err)
     }
@@ -539,8 +552,9 @@ func createNewBranchFromHead(name string) {
 
 func getAllBranches() []Branch {
     result := make([]Branch, 0)
+    root, _ := findLvcRoot()
 
-    fileinfos, err := ioutil.ReadDir(".lvc/branches")
+    fileinfos, err := ioutil.ReadDir(filepath.Join(root, ".lvc/branches"))
     for _, fi := range fileinfos {
         name := fi.Name()
         result = append(result, Branch{
@@ -557,23 +571,26 @@ func getAllBranches() []Branch {
 
 
 func createTagAtHead(name string) {
-    if _, err := os.Open(filepath.Join(".lvc/tags/", name)); !os.IsNotExist(err) {
+    root, _ := findLvcRoot()
+
+    if _, err := os.Open(filepath.Join(root, ".lvc/tags/", name)); !os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: tag '" + name + "' already exists")
         os.Exit(1)
     }
     headID := getHeadID()
 
-    ioutil.WriteFile(filepath.Join(".lvc/tags/", name), []byte(hex.EncodeToString(headID[:]) + "\n"), 0644)
+    ioutil.WriteFile(filepath.Join(root, ".lvc/tags/", name), []byte(hex.EncodeToString(headID[:]) + "\n"), 0644)
 }
 
 
 func getTagID(name string) ID {
-    if _, err := os.Open(filepath.Join(".lvc/tags/", name)); os.IsNotExist(err) {
+    root, _ := findLvcRoot()
+    if _, err := os.Open(filepath.Join(root, ".lvc/tags/", name)); os.IsNotExist(err) {
         fmt.Fprintln(os.Stderr, "error: unknown tag '" + name + "'")
         os.Exit(1)
     }
 
-    tagBytes, err := ioutil.ReadFile(filepath.Join(".lvc/tags/", name))
+    tagBytes, err := ioutil.ReadFile(filepath.Join(root, ".lvc/tags/", name))
     if err != nil {
         panic(err)
     }
@@ -595,7 +612,9 @@ func getTagID(name string) ID {
 func getAllTags() []Tag {
     tags := make([]Tag, 0)
 
-    fileinfos, err := ioutil.ReadDir(".lvc/tags")
+    root, _ := findLvcRoot()
+
+    fileinfos, err := ioutil.ReadDir(filepath.Join(root, ".lvc/tags"))
     for _, fi := range fileinfos {
         name := fi.Name()
         tags = append(tags, Tag{
@@ -641,7 +660,14 @@ func idsAreEqual(a ID, b ID) bool {
 func setHead(branch string) {
     // This will check if the branch exists
     getBranch(branch)
-    ioutil.WriteFile(".lvc/head", []byte(branch + "\n"), 0644)
+    root, _ := findLvcRoot()
+    ioutil.WriteFile(filepath.Join(root, ".lvc/head"), []byte(branch + "\n"), 0644)
+}
+
+
+// Converts paths to the same seprator and directly compares the strings
+func pathsAreEqual(a, b string) bool {
+    return filepath.ToSlash(a) == filepath.ToSlash(b)
 }
 
 
@@ -649,10 +675,11 @@ func checkoutBranch(name string) {
     head := getHead()
     branch := getBranch(name)
     
+    root, _ := findLvcRoot()
 
     // make sure the user is aware that their files will be overwritten
     for _, f := range head.files {
-        currentID := getFileHash(f.name)
+        currentID := getFileHash(filepath.Join(root, f.name))
 
         if !idsAreEqual(f.id, currentID) {
             if !yesno(fmt.Sprintf("Contents of file '%s' has changed since last commit, checking out this branch will OVERWRITE it, Are you sure you want to proceed?", f.name), false) {
@@ -675,7 +702,7 @@ func checkoutBranch(name string) {
 
         found := false
         for _, bf := range branch.files {
-            if bf.name == path {
+            if pathsAreEqual(bf.name, path) {
                 found = true
                 break
             }
@@ -690,7 +717,7 @@ func checkoutBranch(name string) {
     
 
     for _, bf := range branch.files {
-        blobPath := filepath.Join(".lvc/blobs/", hex.EncodeToString(bf.id[:]))
+        blobPath := filepath.Join(root, ".lvc/blobs/", hex.EncodeToString(bf.id[:]))
         copyFile(blobPath, bf.name)
     }
 
@@ -716,17 +743,18 @@ func diffWorkingWith(id ID) {
         if info.IsDir() && info.Name() == ".lvc" {
             return filepath.SkipDir
         }
+        abs := path
         path, _ = filepath.Rel(root, path)
 
         for _, cf := range commit.files {
-            if path == cf.name {
+            if pathsAreEqual(path, cf.name) {
                 // files is tracked
-                id := getFileHash(path)
+                id := getFileHash(abs)
                 if !idsAreEqual(id, cf.id) {
                     // start := time.Now()
                     
                     if(true) {
-                        workingFile, _ := ioutil.ReadFile(path)
+                        workingFile, _ := ioutil.ReadFile(abs)
                         commitFile, _ := ioutil.ReadFile(filepath.Join(root, "/.lvc/blobs/", hex.EncodeToString(cf.id[:])))
 
                         a, b, arr := dmp.DiffLinesToChars(string(commitFile), string(workingFile))
@@ -830,13 +858,15 @@ func initialize() {
 func commitStage(msg string, author string, ) {
     commit := make([]CommitFile, 0)
 
+    root, _ := findLvcRoot()
+
     head := getHead()
     stageFiles := readStageFile()
 
     headFilesLoop:
     for _, hf := range head.files {
         for _, sf := range stageFiles {
-            if sf == hf.name {
+            if pathsAreEqual(sf, hf.name) {
                 continue headFilesLoop
             }
         }
@@ -851,9 +881,9 @@ func commitStage(msg string, author string, ) {
         // If file is new, commit anyways
         // If the files is not new, checked if the hash differ, if so commit it
         for _, hf := range head.files {
-            if hf.name == f {
+            if pathsAreEqual(hf.name, f) {
                 // File is not new
-                hash := getFileHash(f)
+                hash := getFileHash(filepath.Join(root, f))
                 
                 if bytes.Equal(hash[:], hf.id[:]) {
                     commit = append(commit, hf)
@@ -870,12 +900,12 @@ func commitStage(msg string, author string, ) {
             }
         }
 
-        id := getFileHash(f)
+        id := getFileHash(filepath.Join(root, f))
         commit = append(commit, CommitFile{
             name: f,
             id: id,
         })
-        createBlobForFileWithID(f, id)
+        createBlobForFileWithID(filepath.Join(root, f), id)
         filesCreated++
     }
 
