@@ -620,17 +620,19 @@ func diffWorkingWith(id ID) {
     //TODO: Handle files that are present in the commit, but missing in working
     dmp := diffmatchpatch.New()
 
-    less := exec.Cmd{
-        Path: "less",
-        Args: []string{"less", "-FXr"},
-    }
-    if true && runtime.GOOS == "windows" {
+    var less *exec.Cmd
+    if runtime.GOOS == "windows" {
+        less = &exec.Cmd{
+            Path: "less",
+            Args: []string{"-FXr"},
+        }
         dir, err := os.Executable()
         if err != nil {
             panic(err)
         }
         less.Dir = filepath.Dir(dir)
-        fmt.Println(less.Dir)
+    } else {
+        less = exec.Command("less", "-FXr")
     }
     less.Stdout = os.Stdout
     less.Stderr = os.Stderr

@@ -218,19 +218,24 @@ func commandLog() {
         commit = getHead()
     }
 
+    cmd, in := startPager()
+
     for {
         if commit.parent == zeroID {
             break
         }
 
-        fmt.Println(hex.EncodeToString(commit.id[:]))
-        fmt.Println("date: " + commit.timestamp.Local().String())
-        fmt.Println("author: " + commit.author)
-        fmt.Println("message: " + commit.message)
-        fmt.Println()
+        fmt.Fprintln(in, hex.EncodeToString(commit.id[:]))
+        fmt.Fprintln(in, "date: " + commit.timestamp.Local().String())
+        fmt.Fprintln(in, "author: " + commit.author)
+        fmt.Fprintln(in, "message: " + commit.message)
+        fmt.Fprintln(in, )
 
         commit = getCommitWithoutFiles(commit.parent)
     }
+
+    in.Close()
+    cmd.Wait()
 }
 
 
@@ -338,10 +343,16 @@ func commandGraph() {
         }
 
         f.WriteString(fmt.Sprintf(
+            "commit_%s [label=\"%s\"]\n",
+            hex.EncodeToString(id[:]),
+            commit.message,
+        ))
+
+        f.WriteString(fmt.Sprintf(
             "commit_%s -> commit_%s [label=\"%s\"]\n",
             hex.EncodeToString(commit.parent[:]),
             hex.EncodeToString(id[:]),
-            commit.message,
+            "", //commit.message,
         ))
 
         return nil

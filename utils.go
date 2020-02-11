@@ -6,7 +6,9 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"unicode/utf8"
 )
@@ -55,6 +57,37 @@ func walkUp(root string, walkFn walkFunc) error {
     }
 
     return nil
+}
+
+
+func startPager() (*exec.Cmd, io.WriteCloser) {
+    var less *exec.Cmd
+    if runtime.GOOS == "windows" {
+        less = &exec.Cmd{
+            Path: "less",
+            Args: []string{"less", "-FXr"},
+        }
+        dir, err := os.Executable()
+        if err != nil {
+            panic(err)
+        }
+        less.Dir = filepath.Dir(dir)
+    } else {
+        less = exec.Command("less", "-FXr")
+    }
+    less.Stdout = os.Stdout
+    less.Stderr = os.Stderr
+    lessIn, err := less.StdinPipe()
+    if err != nil {
+        //TODO: If we cant grab the stdin for some reason just print it normally
+        panic(err)
+    }
+    err = less.Start()
+    if err != nil {
+        panic(err)
+    }
+
+    return less, lessIn
 }
 
 
