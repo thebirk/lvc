@@ -90,7 +90,6 @@ func commandInit() {
 
 func commandAdd() {
     assumeLvcRepo()
-    //TODO: call functions that ensure this is a valid lvc dir
 
     if flag.NArg() < 1 {
         fmt.Fprintln(os.Stderr, "error: add takes at minimum one argument")
@@ -120,7 +119,6 @@ func commandAdd() {
 func commandCommit() {
     assumeLvcRepo()
 
-    //TODO: ensure .lvc etc.
     if flag.NArg() != 1 {
         printUsage()
         fmt.Fprintln(os.Stderr, "error: commit only takes the form 'commit \"msg\"")
@@ -135,7 +133,6 @@ func commandCommit() {
 func commandStatus() {
     assumeLvcRepo()
 
-    //TODO: ensure .lvc
     fmt.Println("Current branch: " + getBranchFromHead().name)
     fmt.Println()
 
@@ -473,7 +470,7 @@ func main() {
     case "commit":
         commandCommit()
     case "remove":
-        panic("//TODO")
+        panic("//TODO remove")
     case "log":
         commandLog()
     case "branch":

@@ -210,7 +210,7 @@ func stageFiles(files []string) {
             continue
         }
 
-        //TODO: Check if 'f' is inside OUT .lvc, if so ignore it
+        //TODO: Check if 'f' is inside OUR .lvc, if so ignore it
 
         for _, sf := range stagedFiles {
             if pathsAreEqual(sf, f) {
