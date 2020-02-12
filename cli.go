@@ -452,7 +452,15 @@ func main() {
 
     //IDEA: Have some argument like '--root=path' and plop that shit into _lvcRoot
 
+    userRoot := ""
+    flag.StringVar(&userRoot, "root", "", "Operate on a directory outside of the current repository.")
+
     flag.CommandLine.Parse(os.Args[2:])
+
+    if userRoot != "" {
+        //TODO: Check if actually root
+        _lvcRoot, _ = filepath.Abs(userRoot)
+    }
 
     //TODO: Commands:
     // - untrack
