@@ -1,0 +1,54 @@
+digraph lvc {
+rankdir="TB";
+commit_15b2b404ecac9b7a48fb0f9c5cd0ef3c64db764b157848665354c518e2131a33 [label="dummy commit, trying to reach 10+ commits in branch."]
+commit_15eac1605ad387cd6f774ae5aece636bce588b2f9a5d053ef58a587e44b2993e -> commit_15b2b404ecac9b7a48fb0f9c5cd0ef3c64db764b157848665354c518e2131a33 [label=""]
+commit_15eac1605ad387cd6f774ae5aece636bce588b2f9a5d053ef58a587e44b2993e [label="dummy commit, trying to reach 10+ commits in branch."]
+commit_7aae43f8866192da72bb733a058b393f612eedcb19ac61ccd6570196b8e06def -> commit_15eac1605ad387cd6f774ae5aece636bce588b2f9a5d053ef58a587e44b2993e [label=""]
+commit_1dbd2a4329f2e882418d3650afd1901b948e6bad044fdb67916d110ebf348777 [label="document sayHello()."]
+commit_4aea27cad0def91c2c4b0b5958d242aceb9dc00c2c3b7ac7c4118d4f8d28d591 -> commit_1dbd2a4329f2e882418d3650afd1901b948e6bad044fdb67916d110ebf348777 [label=""]
+commit_2773dcedad6c2b1e21827f2828e05a5d117358f5ecdef21cbdf039f3da335374 [label="Actually use sayHello()."]
+commit_7aae43f8866192da72bb733a058b393f612eedcb19ac61ccd6570196b8e06def -> commit_2773dcedad6c2b1e21827f2828e05a5d117358f5ecdef21cbdf039f3da335374 [label=""]
+commit_2c7865f892e3c1194eb0d9fb4e8291583551d6bec3543f657ed7be2e4a40b6c4 [label="Added README."]
+commit_2debd558e01bc5ce8d819a4bbe498f9ee81e960546b448b06c46e8e77a99bc59 [label="dummy commit, trying to reach 10+ commits in branch."]
+commit_a942b20cc5174ec1bedb2c9339dcbe38cbad83eed37f0cfaeff13a9deb8ac6f4 -> commit_2debd558e01bc5ce8d819a4bbe498f9ee81e960546b448b06c46e8e77a99bc59 [label=""]
+commit_39f59579e172b0033c4667b1da679934c73c3c5a5394d7f09d9728e56747b8ef [label="add main.c"]
+commit_4da18222c56e41525b8ae48f7486353c601285b9aaca18ee35cad492cefe2593 -> commit_39f59579e172b0033c4667b1da679934c73c3c5a5394d7f09d9728e56747b8ef [label=""]
+commit_4aea27cad0def91c2c4b0b5958d242aceb9dc00c2c3b7ac7c4118d4f8d28d591 [label="working on main"]
+commit_ee0ec7a166995007d074390fec3c7587a46a515e412d3d49be7b82aca8a527c9 -> commit_4aea27cad0def91c2c4b0b5958d242aceb9dc00c2c3b7ac7c4118d4f8d28d591 [label=""]
+commit_4da18222c56e41525b8ae48f7486353c601285b9aaca18ee35cad492cefe2593 [label="Added world."]
+commit_2c7865f892e3c1194eb0d9fb4e8291583551d6bec3543f657ed7be2e4a40b6c4 -> commit_4da18222c56e41525b8ae48f7486353c601285b9aaca18ee35cad492cefe2593 [label=""]
+commit_54171a0a630f981a6989a36ee493c03a2f6d607127532a6f30f7d7f719614d14 [label="cool-branch steaming ahead."]
+commit_ee0ec7a166995007d074390fec3c7587a46a515e412d3d49be7b82aca8a527c9 -> commit_54171a0a630f981a6989a36ee493c03a2f6d607127532a6f30f7d7f719614d14 [label=""]
+commit_6c769520c9d67fdfb675f837c93d5e58cedc3fb00e2fa9346e7d51957f1a2da0 [label="Added comment to main.c"]
+commit_39f59579e172b0033c4667b1da679934c73c3c5a5394d7f09d9728e56747b8ef -> commit_6c769520c9d67fdfb675f837c93d5e58cedc3fb00e2fa9346e7d51957f1a2da0 [label=""]
+commit_7aae43f8866192da72bb733a058b393f612eedcb19ac61ccd6570196b8e06def [label="Added empty file."]
+commit_1dbd2a4329f2e882418d3650afd1901b948e6bad044fdb67916d110ebf348777 -> commit_7aae43f8866192da72bb733a058b393f612eedcb19ac61ccd6570196b8e06def [label=""]
+commit_7ff0440bf52b6f82fbb1c0414a964f1b88664f2d318a7c559bb613439001596c [label="Does this work now?"]
+commit_ae895d393aea5fb4a073b30ed17d5d18583031c9442d77e883f9e861c66706be -> commit_7ff0440bf52b6f82fbb1c0414a964f1b88664f2d318a7c559bb613439001596c [label=""]
+commit_a942b20cc5174ec1bedb2c9339dcbe38cbad83eed37f0cfaeff13a9deb8ac6f4 [label="dummy commit, trying to reach 10+ commits in branch."]
+commit_aee63da29926eee9d9467be3fe5be8e8c023a45b407638944ede287718eda9cb -> commit_a942b20cc5174ec1bedb2c9339dcbe38cbad83eed37f0cfaeff13a9deb8ac6f4 [label=""]
+commit_ae895d393aea5fb4a073b30ed17d5d18583031c9442d77e883f9e861c66706be [label="We gots them diff working with different path seperators!"]
+commit_2773dcedad6c2b1e21827f2828e05a5d117358f5ecdef21cbdf039f3da335374 -> commit_ae895d393aea5fb4a073b30ed17d5d18583031c9442d77e883f9e861c66706be [label=""]
+commit_aee63da29926eee9d9467be3fe5be8e8c023a45b407638944ede287718eda9cb [label="dummy commit, trying to reach 10+ commits in branch."]
+commit_d7946d6b128610b2218129658831548c46cd1af415efe5bed204aedef8428ae6 -> commit_aee63da29926eee9d9467be3fe5be8e8c023a45b407638944ede287718eda9cb [label=""]
+commit_cd39c2b5397521864950ebd1fda1e6389a4607f7047dbd557ce7477bcb9d2851 [label="blah."]
+commit_7ff0440bf52b6f82fbb1c0414a964f1b88664f2d318a7c559bb613439001596c -> commit_cd39c2b5397521864950ebd1fda1e6389a4607f7047dbd557ce7477bcb9d2851 [label=""]
+commit_d7946d6b128610b2218129658831548c46cd1af415efe5bed204aedef8428ae6 [label="dummy commit, trying to reach 10+ commits in branch."]
+commit_15b2b404ecac9b7a48fb0f9c5cd0ef3c64db764b157848665354c518e2131a33 -> commit_d7946d6b128610b2218129658831548c46cd1af415efe5bed204aedef8428ae6 [label=""]
+commit_ee0ec7a166995007d074390fec3c7587a46a515e412d3d49be7b82aca8a527c9 [label="Added a directory."]
+commit_6c769520c9d67fdfb675f837c93d5e58cedc3fb00e2fa9346e7d51957f1a2da0 -> commit_ee0ec7a166995007d074390fec3c7587a46a515e412d3d49be7b82aca8a527c9 [label=""]
+"branch-stuck-at-hello" [shape=box]
+{rank=same; "branch-stuck-at-hello" -> commit_2c7865f892e3c1194eb0d9fb4e8291583551d6bec3543f657ed7be2e4a40b6c4}
+"cool-branch" [shape=box]
+{rank=same; "cool-branch" -> commit_54171a0a630f981a6989a36ee493c03a2f6d607127532a6f30f7d7f719614d14}
+"dummy-branch" [shape=box]
+{rank=same; "dummy-branch" -> commit_2debd558e01bc5ce8d819a4bbe498f9ee81e960546b448b06c46e8e77a99bc59}
+"empty_dir_test" [shape=box]
+{rank=same; "empty_dir_test" -> commit_ee0ec7a166995007d074390fec3c7587a46a515e412d3d49be7b82aca8a527c9}
+"master" [shape=box]
+{rank=same; "master" -> commit_cd39c2b5397521864950ebd1fda1e6389a4607f7047dbd557ce7477bcb9d2851}
+"new-branch-after-world" [shape=box]
+{rank=same; "new-branch-after-world" -> commit_4da18222c56e41525b8ae48f7486353c601285b9aaca18ee35cad492cefe2593}
+HEAD [shape=box, color=red]
+HEAD -> "master"
+}
