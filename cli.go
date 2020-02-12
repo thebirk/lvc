@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -443,6 +444,24 @@ func commandInfo() {
 }
 
 
+func commandLs() {
+    // List all files tracked
+    head := getHead()
+
+    names := make([]string, 0)
+    for _, f := range head.files {
+        // print with slashes
+        names = append(names, filepath.ToSlash(f.name))
+    }
+
+    sort.Strings(names)
+
+    for _, f := range names {
+        fmt.Println(f)
+    }
+}
+
+
 func main() {
     if len(os.Args) <= 1 {
         printUsage()
@@ -481,6 +500,8 @@ func main() {
         panic("//TODO remove")
     case "log":
         commandLog()
+    case "ls":
+        commandLs()
     case "branch":
         commandBranch()
     case "tag":
