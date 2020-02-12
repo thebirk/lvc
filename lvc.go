@@ -164,6 +164,27 @@ func createBlob(data []byte) ID {
 }
 
 
+func pathIsValidRepo(path string) bool {
+    dir, err := os.Open(path);
+    if err != nil {
+        return false
+    }
+
+    files, err := dir.Readdir(0)
+    if err != nil {
+        return false
+    }
+
+    for _, f := range files {
+        if f.IsDir() && f.Name() == ".lvc" {
+            return true
+        }
+    }
+
+    return false
+}
+
+
 func pathIsChildOfRoot(path string) bool {
     root, _ := findLvcRoot()
     abs, err := filepath.Abs(path)

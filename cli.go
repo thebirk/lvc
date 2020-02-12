@@ -41,6 +41,8 @@ func yesno(prompt string, defaultResp bool) bool {
 func printUsage() {
     const usageStr = "lvc - lesser version control\n" +
                      "\n" +
+                     "lvc <command>" +
+                     "\n" +
                      "commands:\n" +
                      " - init\n" +
                      " - add\n" +
@@ -478,6 +480,10 @@ func main() {
 
     if userRoot != "" {
         //TODO: Check if actually root
+        if !pathIsValidRepo(userRoot) {
+            fmt.Fprintf(os.Stderr, "error: '%s' is not a valid repository\n", userRoot)
+            os.Exit(1)
+        }
         _lvcRoot, _ = filepath.Abs(userRoot)
     }
 
